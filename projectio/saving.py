@@ -26,7 +26,7 @@ def plot_and_save_gif(
         
         for i, (img, ax) in enumerate(zip(img_tup, axs)):
             if titles is not None: 
-                ax.set_title(titles[i], fontsize=18)
+                ax.set_title(titles[i], fontsize=14)
                 
             ax.imshow(img, cmap='gray')
             ax.axis('off')
