@@ -62,3 +62,23 @@ def float64_to_float16(array: np.ndarray) -> np.ndarray:
 
 def stack_channels(*arrays: Tuple[np.ndarray, ...]) -> np.ndarray:
     return np.stack(arrays, axis=-1)
+
+
+
+def slides_filter(ct: np.ndarray, buffer: int=5) -> np.ndarray:
+    shape = ct.shape
+    reshaped = ct.reshape((shape[0], -1)).astype(bool)
+    
+    idxs = reshaped.any(axis=1)
+    
+    kernel_size = 2*buffer + 1
+    kernel = np.ones(kernel_size, dtype=bool)
+    
+    convolved_idxs = np.convolve(idxs, kernel, mode='same')
+
+    return convolved_idxs
+
+
+
+def apply_filter(array: np.ndarray, afilter: np.ndarray) -> np.ndarray:
+    return array[afilter]

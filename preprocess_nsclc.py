@@ -5,11 +5,16 @@ Created on Tue Apr 11 15:55:27 2023
 @author: Gavin
 """
 
-import warnings
+import warnings, random
 
 import numpy as np
 
-from projectio import load_nsclc_cts, load_nsclc_segs, plot_and_save_gif
+from projectio import (
+    load_nsclc_cts, 
+    load_nsclc_segs, 
+    plot_and_save_gif,
+    save_instance
+)
 from pconfig import NSCLC_PREPROCESSED_DATA_DIR
 from preprocessing import (
     clean_nsclc_cts, 
@@ -20,12 +25,23 @@ from preprocessing import (
     float64_to_cv8uc1,
     cv8uc1_to_float64,
     float64_to_float16,
-    stack_channels
+    stack_channels,
+    slides_filter,
+    apply_filter
 )
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    
 
 def main():
     warnings.simplefilter('ignore')
+    
+    subsets = 2
+    
+    set_seed(0)
     
     normalize_vec = np.vectorize(normalize, otypes=[object])
     
@@ -40,6 +56,15 @@ def main():
     cts = cleaner(cts, clean_ct_masks)
     
     lung_ct_masks = mask_nsclc_cts(cts)
+    
+    sfilter = np.vectorize(slides_filter, otypes=[object])
+    filter_idxs = sfilter(lung_ct_masks)
+    
+    apply_sfilter = np.vectorize(apply_filter, otypes=[object])
+    
+    cts = apply_sfilter(cts, filter_idxs)
+    segs = apply_sfilter(segs, filter_idxs)
+    lung_ct_masks = apply_sfilter(lung_ct_masks, filter_idxs)
 
     float64_to_cv8uc1_vec = np.vectorize(float64_to_cv8uc1, otypes=[object])
     cv8uc1_to_float64_vec = np.vectorize(cv8uc1_to_float64, otypes=[object])
@@ -59,10 +84,10 @@ def main():
     gif_name = f'{NSCLC_PREPROCESSED_DATA_DIR}/example_mask.gif'
     
     to_plot = np.array([
-        xs[0][:, :, :, 0],
-        xs[0][:, :, :, 2], 
-        xs[0][:, :, :, 1],
-        ys[0]
+        xs[2][:, :, :, 0],
+        xs[2][:, :, :, 2], 
+        xs[2][:, :, :, 1],
+        ys[2]
     ], dtype=float)
     to_plot = to_plot.swapaxes(0, 1)
     
@@ -71,6 +96,23 @@ def main():
     plot_and_save_gif(to_plot, gif_name, titles=titles, verbose=True)
     
     xs = float64_to_float16_vec(xs)
+    
+    subset_idxs = np.random.permutation(len(xs))
+    xs = xs[subset_idxs]
+    ys = ys[subset_idxs]
+    
+    subsets_xs = np.array_split(xs, subsets)
+    subsets_ys = np.array_split(ys, subsets)
+    
+    for i, (subset_xs, subset_ys) in enumerate(zip(subsets_xs, subsets_ys)):
+        instance_idxs = np.arange(0, len(subset_xs))
+        subset_num = np.full(len(subset_xs), i)
+        dataset = np.full(len(subset_xs), 'NSCLC')
+        
+        print(f'saving subset {i + 1}...')
+        
+        saver = np.vectorize(save_instance, otypes=[object])
+        saver(dataset, subset_num, instance_idxs, subset_xs, subset_ys)
     
     
 

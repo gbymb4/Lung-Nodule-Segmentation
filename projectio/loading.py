@@ -14,9 +14,10 @@ import pylidc as pl
 import matplotlib.path as mpath
 
 from pconfig import LUNA16_RAW_DATA_DIR, NSCLC_RAW_DATA_DIR, IMG_SIZE
-from preprocessing import normalize
 
-def load_luna16_cts(subset: int) -> np.ndarray:
+def load_luna16_cts(subset: int, load_limit: int=None) -> np.ndarray:
+    assert load_limit is None or load_limit > 0
+    
     data_dir = f'{LUNA16_RAW_DATA_DIR}/subset{subset}'
     
     all_headers = list(filter(lambda x: x[-4:] == '.mhd', os.listdir(data_dir)))
@@ -28,14 +29,19 @@ def load_luna16_cts(subset: int) -> np.ndarray:
         return ct
 
     loader = np.vectorize(load_luna16_ct, otypes=[object])
+    
+    if load_limit is not None:
+        all_headers = all_headers[:load_limit]
 
-    all_cts = loader(all_headers[:3])
+    all_cts = loader(all_headers)
     
     return all_cts
 
 
 
-def load_luna16_segs(subset: int) -> np.ndarray:
+def load_luna16_segs(subset: int, load_limit: int=None) -> np.ndarray:
+    assert load_limit is None or load_limit > 0
+    
     data_dir = f'{LUNA16_RAW_DATA_DIR}/subset{subset}'
     
     all_headers = list(filter(lambda x: x[-4:] == '.mhd', os.listdir(data_dir)))
@@ -82,13 +88,18 @@ def load_luna16_segs(subset: int) -> np.ndarray:
     
     load_luna16_seg_vec = np.vectorize(load_luna16_seg, otypes=[object])
     
-    segs = load_luna16_seg_vec(subset_sids[:3])
+    if load_limit is not None:
+        subset_sids = subset_sids[:load_limit]
+    
+    segs = load_luna16_seg_vec(subset_sids)
 
     return segs
 
 
 
-def load_nsclc_cts() -> np.ndarray:
+def load_nsclc_cts(load_limit: int=None) -> np.ndarray:
+    assert load_limit is None or load_limit > 0
+    
     data_dir = f'{NSCLC_RAW_DATA_DIR}/NSCLC-Radiomics'
     
     all_roots = [f'{data_dir}/{elem}' for elem in os.listdir(data_dir)]
@@ -121,14 +132,19 @@ def load_nsclc_cts() -> np.ndarray:
         return ct
 
     loader = np.vectorize(load_nsclc_ct, otypes=[object])
+    
+    if load_limit is not None:
+        all_roots = all_roots[:load_limit]
 
-    all_cts = loader(all_roots[:3])
+    all_cts = loader(all_roots)
     
     return all_cts
 
 
 
-def load_nsclc_segs() -> np.ndarray:
+def load_nsclc_segs(load_limit: int=None) -> np.ndarray:
+    assert load_limit is None or load_limit > 0
+    
     data_dir = f'{NSCLC_RAW_DATA_DIR}/NSCLC-Radiomics'
     
     all_roots = [f'{data_dir}/{elem}' for elem in os.listdir(data_dir)]
@@ -163,7 +179,10 @@ def load_nsclc_segs() -> np.ndarray:
 
     loader = np.vectorize(load_nsclc_seg, otypes=[object])
 
-    all_segs = loader(all_roots[:3])
+    if load_limit is not None:
+        all_roots = all_roots[:load_limit]
+
+    all_segs = loader(all_roots)
     
     return all_segs
 

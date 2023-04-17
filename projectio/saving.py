@@ -5,12 +5,13 @@ Created on Mon Apr  3 16:51:47 2023
 @author: Gavin
 """
 
-import imageio
+import imageio, os
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from typing import List
+from pconfig import NSCLC_PREPROCESSED_DATA_DIR, LUNA16_PREPROCESSED_DATA_DIR
 
 def plot_and_save_gif(
     images: np.ndarray,
@@ -49,3 +50,29 @@ def plot_and_save_gif(
 
     for fig in fig_handles:
         plt.close(fig)
+        
+        
+
+def save_instance(
+    dataset: str,
+    subset: int,
+    idx: int,
+    xs: np.ndarray,
+    ys: np.ndarray
+) -> None:
+    
+    if dataset.lower() == 'nsclc':
+        save_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/subset{subset}'
+    elif dataset.lower() == 'luna16':
+        save_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/subset{subset}'
+    else:
+        raise ValueError(f'dataset "{dataset}" does not exist')
+        
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    
+    instance_dir = f'{save_dir}/{idx}'
+    
+    if not os.path.isdir(instance_dir): os.mkdir(instance_dir)
+    
+    np.save(f'{instance_dir}/X.npy', xs)
+    np.save(f'{instance_dir}/y.npy', ys)
