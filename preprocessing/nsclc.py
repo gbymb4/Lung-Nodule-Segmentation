@@ -15,7 +15,7 @@ from skimage.morphology import (
     binary_dilation
 )
 
-def __mask_nsclc_ct(ct: np.ndarray) -> np.ndarray:
+def mask_nsclc_ct(ct: np.ndarray) -> np.ndarray:
     
     lung_threshold = ct.min() + ((ct.max() - ct.min()) * 0.171)
     
@@ -48,7 +48,7 @@ def __mask_nsclc_ct(ct: np.ndarray) -> np.ndarray:
 
 
 
-def __clean_nsclc_ct(ct: np.ndarray) -> np.ndarray:
+def clean_nsclc_ct(ct: np.ndarray) -> np.ndarray:
     
     lung_threshold = ct.min() + ((ct.max() - ct.min()) * 0.171)
     
@@ -99,6 +99,6 @@ def __clean_nsclc_ct(ct: np.ndarray) -> np.ndarray:
 
 
 
-clean_nsclc_cts = np.vectorize(__clean_nsclc_ct, otypes=[object])
+clean_nsclc_cts = np.vectorize(clean_nsclc_ct, otypes=[object])
 
-mask_nsclc_cts = np.vectorize(__mask_nsclc_ct, otypes=[object])
+mask_nsclc_cts = np.vectorize(mask_nsclc_ct, otypes=[object])

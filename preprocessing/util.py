@@ -60,6 +60,13 @@ def float64_to_float16(array: np.ndarray) -> np.ndarray:
 
 
 
+def float16_to_float64(array: np.ndarray) -> np.ndarray:
+    convert = array.astype(np.float64)
+    
+    return convert
+
+
+
 def stack_channels(*arrays: Tuple[np.ndarray, ...]) -> np.ndarray:
     return np.stack(arrays, axis=-1)
 
@@ -81,4 +88,7 @@ def slides_filter(ct: np.ndarray, buffer: int=5) -> np.ndarray:
 
 
 def apply_filter(array: np.ndarray, afilter: np.ndarray) -> np.ndarray:
+    if len(array) != len(afilter):
+        return array
+    
     return array[afilter]

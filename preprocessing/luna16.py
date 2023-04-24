@@ -15,9 +15,8 @@ from skimage.morphology import (
     binary_dilation
 )
 
-def __mask_luna16_ct(ct: np.ndarray) -> np.ndarray:
+def mask_luna16_ct(ct: np.ndarray) -> np.ndarray:
     
-    ct_min = ct.min()
     lung_threshold = -700
     
     def mask_slide(slide):
@@ -57,7 +56,7 @@ def __mask_luna16_ct(ct: np.ndarray) -> np.ndarray:
 
 
 
-def __clean_luna16_ct(ct: np.ndarray) -> np.ndarray:
+def clean_luna16_ct(ct: np.ndarray) -> np.ndarray:
     
     lung_threshold = -700
     
@@ -96,6 +95,6 @@ def __clean_luna16_ct(ct: np.ndarray) -> np.ndarray:
 
 
 
-clean_luna16_cts = np.vectorize(__clean_luna16_ct, otypes=[object])
+clean_luna16_cts = np.vectorize(clean_luna16_ct, otypes=[object])
 
-mask_luna16_cts = np.vectorize(__mask_luna16_ct, otypes=[object])
+mask_luna16_cts = np.vectorize(mask_luna16_ct, otypes=[object])
