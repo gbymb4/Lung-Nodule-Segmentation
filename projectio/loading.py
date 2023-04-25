@@ -315,7 +315,11 @@ def prepare_dataloaders(datasets, train_idx, **kwargs):
     
     valid_idxs = all_idxs[all_idxs != train_idx]
     
-    train = DataLoader(datasets[train_idx], **kwargs)
-    valid = DataLoader(ConcatDataset(datasets[valid_idxs]), **kwargs)
+    train = DataLoader(datasets[train_idx], collate_fn=__collate_fn, **kwargs)
+    valid = DataLoader(ConcatDataset(datasets[valid_idxs]), collate_fn=__collate_fn, **kwargs)
     
     return train, valid
+
+
+def __collate_fn(batch):
+    return list(zip(*batch))
