@@ -113,6 +113,8 @@ class SimpleBPOptimizer:
             history.append(history_record)
             
             if verbose and i % 10 == 0 and epoch != epochs:
+                print(f'epoch {epoch} training statistics:')
+                print('\n'.join([f'->{key} = {value:.4f}' for key, value in history_record]))
                 print('-'*32)
             
         print('#'*32)
