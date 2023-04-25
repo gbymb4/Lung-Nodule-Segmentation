@@ -5,7 +5,7 @@ Created on Mon Apr  3 16:51:42 2023
 @author: Gavin
 """
 
-import os
+import os, torch
 
 import numpy as np
 import skimage.io as io
@@ -13,9 +13,17 @@ import pydicom as dicom
 import pylidc as pl
 import matplotlib.path as mpath
 
-from pconfig import LUNA16_RAW_DATA_DIR, NSCLC_RAW_DATA_DIR, IMG_SIZE
+from pconfig import (
+    LUNA16_RAW_DATA_DIR, 
+    NSCLC_RAW_DATA_DIR, 
+    LUNA16_PREPROCESSED_DATA_DIR, 
+    NSCLC_PREPROCESSED_DATA_DIR,
+    IMG_SIZE
+)
+from torch.utils.data import DataLoader, Dataset, ConcatDataset
+from typing import Union, Iterable, Callable, Tuple
 
-def luna16_ct_fnames(subset: int, load_limit: int=None) -> np.ndarray:
+def luna16_ct_fnames(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
     
     data_dir = f'{LUNA16_RAW_DATA_DIR}/subset{subset}'
@@ -47,7 +55,7 @@ def load_luna16_ct(fname: str) -> np.ndarray:
 
 
 
-def luna16_seg_subset_sids(subset: int, load_limit: int=None) -> np.ndarray:
+def luna16_seg_subset_sids(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
     
     data_dir = f'{LUNA16_RAW_DATA_DIR}/subset{subset}'
@@ -59,7 +67,7 @@ def luna16_seg_subset_sids(subset: int, load_limit: int=None) -> np.ndarray:
 
 
 
-def load_luna16_segs(subset: int, load_limit: int=None) -> np.ndarray:
+def load_luna16_segs(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     subset_sids = luna16_seg_subset_sids()
     
     load_luna16_seg_vec = np.vectorize(load_luna16_seg, otypes=[object])
@@ -110,7 +118,7 @@ def load_luna16_seg(sid: str) -> np.ndarray:
 
 
 
-def nsclc_ct_fnames(load_limit: int=None) -> np.ndarray:
+def nsclc_ct_fnames(load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
     
     data_dir = f'{NSCLC_RAW_DATA_DIR}/NSCLC-Radiomics'
@@ -123,7 +131,7 @@ def nsclc_ct_fnames(load_limit: int=None) -> np.ndarray:
 
 
 
-def load_nsclc_cts(load_limit: int=None) -> np.ndarray:
+def load_nsclc_cts(load_limit: Union[int, None]=None) -> np.ndarray:
     all_roots = nsclc_ct_fnames(load_limit)
 
     loader = np.vectorize(load_nsclc_ct, otypes=[object])
@@ -164,7 +172,7 @@ def load_nsclc_ct(fname: str) -> np.ndarray:
 
 
 
-def nsclc_seg_fnames(load_limit: int=None) -> np.ndarray:
+def nsclc_seg_fnames(load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
     
     data_dir = f'{NSCLC_RAW_DATA_DIR}/NSCLC-Radiomics'
@@ -177,7 +185,7 @@ def nsclc_seg_fnames(load_limit: int=None) -> np.ndarray:
     
     
 
-def load_nsclc_segs(load_limit: int=None) -> np.ndarray:
+def load_nsclc_segs(load_limit: Union[int, None]=None) -> np.ndarray:
     all_roots = nsclc_seg_fnames(load_limit)
 
     loader = np.vectorize(load_nsclc_seg, otypes=[object])
@@ -215,3 +223,99 @@ def load_nsclc_seg(fname: str) -> np.ndarray:
     segment = raw_img[idx*count_slides : (idx+1)*count_slides]
     
     return segment
+
+
+
+class LNSegDataset(Dataset):
+    
+    def __init__(
+        self,
+        dataset: str,
+        subset: int,
+        load_limit: Union[int, None]=None, 
+        device: str='cpu',
+        transforms: Union[Iterable[Callable], None]=None,
+        transform_kwargs: Union[Iterable[dict], None]=None
+    ) -> None:
+        super().__init__()
+        
+        assert load_limit is None or load_limit > 0
+        
+        if dataset.lower() == 'luna16':
+            data_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/subset{subset}'
+        elif dataset.lower() == 'nsclc':
+            data_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/subset{subset}'
+        else:
+            raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+        
+        instance_dirs = [f'{data_dir}/{i}' for i in range(len(os.listdir(data_dir)))]
+        
+        def load_instance(instance_dir: str) -> Tuple[torch.Tensor, torch.Tensor]:
+            x = np.load(f'{instance_dir}/X.npy')
+            y = np.load(f'{instance_dir}/y.npy')
+            
+            if transforms is not None:
+                for transform, kwargs in zip(transforms, transform_kwargs):
+                    x, y = transform(x, y, **kwargs)
+            
+            x = torch.from_numpy(x).type(torch.float16)
+            x = x.to(device)
+            
+            y = torch.from_numpy(y).type(torch.int8)
+            y = y.to(device)
+            
+            return x, y
+        
+        self.xs, self.ys = [], []
+        
+        for instance_dir in instance_dirs:
+            x, y = load_instance(instance_dir)
+            
+            self.xs.append(x)
+            self.ys.append(y)
+     
+     
+     
+    def __len__(self) -> None:
+         return len(self.xs)
+     
+        
+     
+    def __getitem__(self, idx: Union[Iterable, int]) -> None:
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        
+        xs = self.xs[idx]
+        ys = self.ys[idx]
+        
+        return xs, ys
+    
+
+
+def prepare_datasets(dataset, **kwargs):
+    if dataset.lower() == 'luna16':
+        data_dir = LUNA16_PREPROCESSED_DATA_DIR
+    elif dataset.lower() == 'nsclc':
+        data_dir = NSCLC_PREPROCESSED_DATA_DIR
+    else:
+        raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+        
+    subsets_count = len([subset_dir for subset_dir in os.listdir(data_dir) if subset_dir[:6] == 'subset'])
+    
+    datasets = [LNSegDataset(dataset, i, **kwargs) for i in range(subsets_count)]
+    
+    return datasets
+
+
+    
+def prepare_dataloaders(datasets, train_idx, **kwargs):
+    datasets = np.array(datasets)
+    
+    all_idxs = np.arange(0, len(datasets))
+    
+    valid_idxs = all_idxs[all_idxs != train_idx]
+    
+    train = DataLoader(datasets[train_idx], **kwargs)
+    valid = DataLoader(ConcatDataset(datasets[valid_idxs]), **kwargs)
+    
+    return train, valid
