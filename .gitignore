@@ -139,3 +139,5 @@ data/preprocessed/*
 
 # Testing Scripts
 testing.py
+test
+test/*
