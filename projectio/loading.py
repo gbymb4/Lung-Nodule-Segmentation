@@ -21,7 +21,7 @@ from pconfig import (
     IMG_SIZE
 )
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
-from typing import Union, Iterable, Callable, Tuple
+from typing import Union, Iterable, Callable, Tuple, List
 
 def luna16_ct_fnames(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
@@ -232,6 +232,7 @@ class LNSegDataset(Dataset):
         self,
         dataset: str,
         subset: int,
+        load_ct_dims: Union[List[int], None]=None,
         load_limit: Union[int, None]=None, 
         device: str='cpu',
         transforms: Union[Iterable[Callable], None]=None,
@@ -253,7 +254,10 @@ class LNSegDataset(Dataset):
         def load_instance(instance_dir: str) -> Tuple[torch.Tensor, torch.Tensor]:
             x = np.load(f'{instance_dir}/X.npy')
             y = np.load(f'{instance_dir}/y.npy')
-            
+
+            if load_ct_dims is not None:
+                x = x[np.array(load_ct_dims), :, :, :]
+
             if transforms is not None:
                 for transform, kwargs in zip(transforms, transform_kwargs):
                     x, y = transform(x, y, **kwargs)

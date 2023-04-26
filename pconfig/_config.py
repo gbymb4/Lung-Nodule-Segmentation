@@ -5,11 +5,11 @@ Created on Mon Apr  3 16:53:09 2023
 @author: Gavin
 """
 
-LUNA16_RAW_DATA_DIR = 'B:/Datasets/LUNA16'
-LUNA16_PREPROCESSED_DATA_DIR = 'data/preprocessed/LUNA16'
+LUNA16_RAW_DATA_DIR = '/home/taskergavi/Lung-Nodule-Segmentation/data/raw/LUNA16'
+LUNA16_PREPROCESSED_DATA_DIR = '/home/taskergavi/Lung-Nodule-Segmentation/data/preprocessed/LUNA16'
 
-NSCLC_RAW_DATA_DIR = 'B:/Datasets/NSCLC'
-NSCLC_PREPROCESSED_DATA_DIR = 'data/preprocessed/NSCLC'
+NSCLC_RAW_DATA_DIR = '/home/taskergavi/Lung-Nodule-Segmentation/data/raw/NSCLC'
+NSCLC_PREPROCESSED_DATA_DIR = '/home/taskergavi/Lung-Nodule-Segmentation/data/PREPROCESSED/NSCLC'
 
 IMG_SIZE = 512
 

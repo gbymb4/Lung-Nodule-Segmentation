@@ -24,7 +24,13 @@ def main():
     transforms = [zoom_and_resize_ct_and_seg]
     transform_kwargs = [{'new_size': (360, 360)}]
 
-    datasets = prepare_datasets('LUNA16', transforms=transforms, transform_kwargs=transform_kwargs)
+    datasets = prepare_datasets(
+        'LUNA16',
+        transforms=transforms,
+        transform_kwargs=transform_kwargs,
+        load_ct_dims=[0, 1]
+    )
+
     train_loader, valid_loader = prepare_dataloaders(datasets, train_idx=0, batch_size=8)
 
     optim = SimpleBPOptimizer(model, train_loader, valid_loader, device='cuda')
