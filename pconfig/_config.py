@@ -11,6 +11,8 @@ LUNA16_PREPROCESSED_DATA_DIR = '/home/taskergavi/Lung-Nodule-Segmentation/data/p
 NSCLC_RAW_DATA_DIR = '/home/taskergavi/Lung-Nodule-Segmentation/data/raw/NSCLC'
 NSCLC_PREPROCESSED_DATA_DIR = '/home/taskergavi/Lung-Nodule-Segmentation/data/PREPROCESSED/NSCLC'
 
+OUT_DIR = 'out'
+
 IMG_SIZE = 512
 
 LUNA16_TRACHEA_FRACTION = 0.6 / 100

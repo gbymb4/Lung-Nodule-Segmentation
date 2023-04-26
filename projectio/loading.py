@@ -255,6 +255,12 @@ class LNSegDataset(Dataset):
             x = np.load(f'{instance_dir}/X.npy')
             y = np.load(f'{instance_dir}/y.npy')
 
+            x = x.swapaxes(1, 3)
+            x = x.swapaxes(0, 1)
+
+            y = y[:, :, :, np.newaxis].swapaxes(1, 3)
+            y = y.swapaxes(0, 1)
+
             if load_ct_dims is not None:
                 x = x[np.array(load_ct_dims), :, :, :]
 
@@ -313,7 +319,7 @@ def prepare_datasets(dataset, **kwargs):
 
     
 def prepare_dataloaders(datasets, train_idx, **kwargs):
-    datasets = np.array(datasets)
+    datasets = np.array(datasets, dtype=object)
     
     all_idxs = np.arange(0, len(datasets))
     

@@ -131,7 +131,7 @@ dmypy.json
 # Output
 
 out/*
-out.txt
+*out.txt
 
 # Data
 data/raw/*

@@ -5,13 +5,14 @@ Created on Mon Apr  3 16:51:47 2023
 @author: Gavin
 """
 
-import imageio, os
+import imageio, os, time, json, torch
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+from torch import nn
 from typing import List
-from pconfig import NSCLC_PREPROCESSED_DATA_DIR, LUNA16_PREPROCESSED_DATA_DIR
+from pconfig import NSCLC_PREPROCESSED_DATA_DIR, LUNA16_PREPROCESSED_DATA_DIR, OUT_DIR
 
 def plot_and_save_gif(
     images: np.ndarray,
@@ -76,3 +77,30 @@ def save_instance(
     
     np.save(f'{instance_dir}/X.npy', xs)
     np.save(f'{instance_dir}/y.npy', ys)
+
+
+
+def save_history_dict_and_model(
+    dataset: str,
+    model: nn.Module,
+    train_idx: int,
+    history: dict
+) -> None:
+    dataset = dataset.lower()
+    model_name = model.__name__
+
+    if not os.path.isdir(OUT_DIR): os.mkdir(OUT_DIR)
+
+    save_root_dir = f'{OUT_DIR}/dataset'
+    if not os.path.isdir(save_root_dir): os.mkdir(save_root_dir)
+
+    save_parent_dir = f'{save_root_dir}/{model_name}'
+    if not os.path.isdir(save_parent_dir): os.mkdir(save_parent_dir)
+
+    save_dir = f'{save_parent_dir}/{train_idx}_{time.time()}'
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+
+    with open(f'{save_dir}/history.json', 'w') as file:
+        json.dump(history, file)
+
+    torch.save(model.state_dict(), f'{save_dir}/model')
