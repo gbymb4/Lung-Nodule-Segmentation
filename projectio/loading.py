@@ -250,7 +250,7 @@ class LNSegDataset(Dataset):
         else:
             raise ValueError(f"invalid value for arg 'dataset': {dataset}")
         
-        instance_dirs = [f'{data_dir}/{i}' for i in range(len(os.listdir(data_dir)))]
+        instance_dirs = [f'{data_dir}/{instance_id}' for instance_id in os.listdir(data_dir)]
         
         def load_instance(instance_dir: str) -> Tuple[torch.Tensor, torch.Tensor]:
             x = np.load(f'{instance_dir}/X.npy')
