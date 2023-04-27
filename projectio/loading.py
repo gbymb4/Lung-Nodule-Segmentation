@@ -263,7 +263,7 @@ class LNSegDataset(Dataset):
 
             if load_ct_dims is not None:
                 x = x[np.array(load_ct_dims), :, :, :]
-
+            print(instance_dir)
             if transforms is not None:
                 for transform, kwargs in zip(transforms, transform_kwargs):
                     x, y = transform(x, y, **kwargs)
@@ -302,6 +302,13 @@ class LNSegDataset(Dataset):
     
 
 
+def prepare_dataset(dataset, subset, **kwargs):
+    print(subset)
+    print(f'subset: {subset}')
+    return LNSegDataset(dataset, subset, **kwargs)
+
+
+
 def prepare_datasets(dataset, **kwargs):
     if dataset.lower() == 'luna16':
         data_dir = LUNA16_PREPROCESSED_DATA_DIR
@@ -312,7 +319,7 @@ def prepare_datasets(dataset, **kwargs):
         
     subsets_count = len([subset_dir for subset_dir in os.listdir(data_dir) if subset_dir[:6] == 'subset'])
     
-    datasets = [LNSegDataset(dataset, i, **kwargs) for i in range(subsets_count)]
+    datasets = [prepare_dataset(dataset, i, **kwargs) for i in range(subsets_count)]
     
     return datasets
 

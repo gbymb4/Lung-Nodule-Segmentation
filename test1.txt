@@ -1,0 +1,6 @@
+1
+subset: 1
+/home/taskergavi/Lung-Nodule-Segmentation/data/preprocessed/LUNA16/subset1/0
+(96, 2, 512, 512) (96, 1, 512, 512)
+/home/taskergavi/Lung-Nodule-Segmentation/data/preprocessed/LUNA16/subset1/1
+(320, 2, 512, 512) (320, 1, 512, 512)
