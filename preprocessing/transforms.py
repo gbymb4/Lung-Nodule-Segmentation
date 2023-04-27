@@ -80,7 +80,7 @@ def zoom_and_resize_ct_and_seg(
 
     ct = ct.swapaxes(0, 1)
     seg = seg.swapaxes(0, 1)
-    print(ct.shape, seg.shape)
+
     zoom_and_resize_vec = np.vectorize(zoom_and_resize, signature='(a,n,m),(b,n,m)->(a,i,j),(b,i,j)')
     zoomed_ct, zoomed_seg = zoom_and_resize_vec(ct, seg)
 

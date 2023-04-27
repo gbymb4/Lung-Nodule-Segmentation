@@ -264,7 +264,7 @@ class LNSegDataset(Dataset):
 
             if load_ct_dims is not None:
                 x = x[np.array(load_ct_dims), :, :, :]
-            print(instance_dir)
+
             if transforms is not None:
                 for transform, kwargs in zip(transforms, transform_kwargs):
                     x, y = transform(x, y, **kwargs)
@@ -304,8 +304,6 @@ class LNSegDataset(Dataset):
 
 
 def prepare_dataset(dataset, subset, **kwargs):
-    print(subset)
-    print(f'subset: {subset}')
     return LNSegDataset(dataset, subset, **kwargs)
 
 
