@@ -303,8 +303,8 @@ class LNSegDataset(Dataset):
     
 
 
-def prepare_dataset(dataset, subset, **kwargs):
-    return LNSegDataset(dataset, subset, **kwargs)
+def prepare_dataset(inputs):
+    return LNSegDataset(*inputs[0], **inputs[1])
 
 
 
@@ -328,10 +328,7 @@ def prepare_datasets(dataset, num_workers=1, **kwargs):
         pool_arguments = list(zip(all_args, all_kwargs))
 
         with Pool(num_workers) as p:
-            def prepare(inputs):
-                return prepare_dataset(*inputs[0], **inputs[1])
-            
-            datasets = p.map(prepare, pool_arguments)
+            datasets = p.map(prepare_dataset, pool_arguments)
 
     return datasets
 
