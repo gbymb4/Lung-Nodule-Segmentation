@@ -328,7 +328,10 @@ def prepare_datasets(dataset, num_workers=1, **kwargs):
         pool_arguments = list(zip(all_args, all_kwargs))
 
         with Pool(num_workers) as p:
-            datasets = p.map(lambda x: prepare_dataset(*x[0], **x[1]), pool_arguments)
+            def prepare(inputs):
+                return prepare_dataset(*inputs[0], **inputs[1])
+            
+            datasets = p.map(prepare, pool_arguments)
 
     return datasets
 
