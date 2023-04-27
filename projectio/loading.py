@@ -22,6 +22,7 @@ from pconfig import (
 )
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
 from typing import Union, Iterable, Callable, Tuple, List
+from multiprocessing import Pool
 
 def luna16_ct_fnames(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
@@ -309,7 +310,9 @@ def prepare_dataset(dataset, subset, **kwargs):
 
 
 
-def prepare_datasets(dataset, **kwargs):
+def prepare_datasets(dataset, num_workers=1, **kwargs):
+    assert num_workers > 0
+
     if dataset.lower() == 'luna16':
         data_dir = LUNA16_PREPROCESSED_DATA_DIR
     elif dataset.lower() == 'nsclc':
@@ -318,9 +321,17 @@ def prepare_datasets(dataset, **kwargs):
         raise ValueError(f"invalid value for arg 'dataset': {dataset}")
         
     subsets_count = len([subset_dir for subset_dir in os.listdir(data_dir) if subset_dir[:6] == 'subset'])
-    
-    datasets = [prepare_dataset(dataset, i, **kwargs) for i in range(subsets_count)]
-    
+
+    if num_workers == 1:
+        datasets = [prepare_dataset(dataset, i, **kwargs) for i in range(subsets_count)]
+    else:
+        all_args = [(dataset, i) for i in range(subsets_count)]
+        all_kwargs = [kwargs for _ in range(subsets_count)]
+        pool_arguments = list(zip(all_args, all_kwargs))
+
+        with Pool(num_workers) as p:
+            datasets = p.map(lambda x: prepare_dataset(*x[0], **x[1]), pool_arguments)
+
     return datasets
 
 
