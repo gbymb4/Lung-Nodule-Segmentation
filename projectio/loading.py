@@ -339,10 +339,10 @@ def prepare_dataloaders(datasets, train_idx, **kwargs):
     all_idxs = np.arange(0, len(datasets))
     
     valid_idxs = all_idxs[all_idxs != train_idx]
-    getter = itemgetter(*list(valid_idxs))
+    valid_datasets = [datasets[idx] for idx in valid_idxs]
     
     train = DataLoader(datasets[train_idx], collate_fn=__collate_fn, **kwargs)
-    valid = DataLoader(ConcatDataset(getter(datasets)), collate_fn=__collate_fn, **kwargs)
+    valid = DataLoader(ConcatDataset(valid_datasets), collate_fn=__collate_fn, **kwargs)
     
     return train, valid
 
