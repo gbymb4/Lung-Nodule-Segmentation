@@ -77,11 +77,11 @@ class SimpleBPOptimizer:
                     
                     if len(ct_chunks) > 1 and ct_chunks[-1].size(1) == 1:
                         merged_ct_chunk = torch.cat((ct_chunks[-2], ct_chunks[-1]), dim=1)
-                        ct_chunks = ct_chunks[:-2] + [merged_ct_chunk]
+                        ct_chunks = ct_chunks[:-2] + (merged_ct_chunk,)
                     
                     if len(seg_chunks) > 1 and seg_chunks[-1].size(1) == 1:
                         merged_seg_chunk = torch.cat((seg_chunks[-2], seg_chunks[-1]), dim=1)
-                        seg_chunks = seg_chunks[:-2] + [merged_seg_chunk]
+                        seg_chunks = seg_chunks[:-2] + (merged_seg_chunk,)
 
                     for ct_chunk, seg_chunk in zip(ct_chunks, seg_chunks):
                         ct_chunk = ct_chunk.unsqueeze(dim=0).float()
@@ -144,11 +144,11 @@ class SimpleBPOptimizer:
                     
                     if len(ct_chunks) > 1 and ct_chunks[-1].size(1) == 1:
                         merged_ct_chunk = torch.cat((ct_chunks[-2], ct_chunks[-1]), dim=1)
-                        ct_chunks = ct_chunks[:-2] + [merged_ct_chunk]
+                        ct_chunks = ct_chunks[:-2] + (merged_ct_chunk,)
                     
                     if len(seg_chunks) > 1 and seg_chunks[-1].size(1) == 1:
                         merged_seg_chunk = torch.cat((seg_chunks[-2], seg_chunks[-1]), dim=1)
-                        seg_chunks = seg_chunks[:-2] + [merged_seg_chunk]
+                        seg_chunks = seg_chunks[:-2] + (merged_seg_chunk,)
                         
                     for ct_chunk, seg_chunk in zip(ct_chunks, seg_chunks):
                         ct_chunk = ct_chunk.unsqueeze(dim=0).float()
