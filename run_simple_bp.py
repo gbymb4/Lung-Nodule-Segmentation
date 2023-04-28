@@ -24,6 +24,9 @@ def main():
     train_idx = 0
 
     model = R2UNet(16, img_channels=2).to(device)
+    
+    if hasattr(model, 'compile'):
+        model = model.compile()
 
     transforms = [zoom_and_resize_ct_and_seg]
     transform_kwargs = [{'new_size': 360}]
