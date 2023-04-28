@@ -23,6 +23,7 @@ from pconfig import (
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
 from typing import Union, Iterable, Callable, Tuple, List
 from multiprocessing import Pool
+from operator import itemgetter
 
 def luna16_ct_fnames(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
@@ -335,14 +336,13 @@ def prepare_datasets(dataset, num_workers=1, **kwargs):
 
     
 def prepare_dataloaders(datasets, train_idx, **kwargs):
-    datasets = np.array(datasets, dtype=object)
-    
     all_idxs = np.arange(0, len(datasets))
     
     valid_idxs = all_idxs[all_idxs != train_idx]
+    getter = itemgetter(*list(valid_idxs))
     
     train = DataLoader(datasets[train_idx], collate_fn=__collate_fn, **kwargs)
-    valid = DataLoader(ConcatDataset(datasets[valid_idxs]), collate_fn=__collate_fn, **kwargs)
+    valid = DataLoader(ConcatDataset(getter(datasets)), collate_fn=__collate_fn, **kwargs)
     
     return train, valid
 
