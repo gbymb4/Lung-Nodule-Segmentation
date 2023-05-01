@@ -87,7 +87,7 @@ def save_history_dict_and_model(
     history: dict
 ) -> None:
     dataset = dataset.lower()
-    model_name = model.__name__
+    model_name = type(model).__name__
 
     if not os.path.isdir(OUT_DIR): os.mkdir(OUT_DIR)
 
