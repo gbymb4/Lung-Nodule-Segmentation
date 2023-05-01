@@ -32,7 +32,7 @@ def zoom_and_resize_ct_and_seg(
         return min([bot_row_padding, top_row_padding, right_col_padding, left_col_padding])
 
     slide_min_padding_vec = np.vectorize(slide_min_padding, signature='(n,m)->()')
-    slide_min_paddings = slide_min_padding_vec(ct[0])
+    slide_min_paddings = slide_min_padding_vec(ct[1])
 
     min_padding = min(slide_min_paddings)
     crop_area = (IMG_SIZE - min_padding) ** 2
