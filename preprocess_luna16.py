@@ -34,13 +34,13 @@ from preprocessing import (
 )
 
 def preprocess_ct(fname, sid):
-    ct = load_luna16_ct(fname).swapaxes(1, 2)
-    seg = load_luna16_seg(sid).swapaxes(1, 2)
+    ct = load_luna16_ct(fname)
+    seg = load_luna16_seg(sid)
     
     clean_ct_mask = clean_luna16_ct(ct)
-    lung_ct_mask = mask_luna16_ct(ct)
-
     ct = apply_mask(ct, clean_ct_mask)
+    
+    lung_ct_mask = mask_luna16_ct(ct)
     
     filter_idxs = slides_filter(lung_ct_mask)
     

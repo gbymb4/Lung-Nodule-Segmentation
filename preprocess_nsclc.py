@@ -46,9 +46,9 @@ def preprocess_ct(ct_fname, seg_fname):
     seg = load_nsclc_seg(seg_fname)
     
     clean_ct_mask = clean_nsclc_ct(ct)
-    lung_ct_mask = mask_nsclc_ct(ct)
-
     ct = apply_mask(ct, clean_ct_mask)
+    
+    lung_ct_mask = mask_nsclc_ct(ct)
     
     filter_idxs = slides_filter(lung_ct_mask)
     
