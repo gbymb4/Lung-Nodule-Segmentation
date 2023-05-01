@@ -206,7 +206,12 @@ def load_nsclc_seg(fname: str) -> np.ndarray:
     
     contents = [f'{ct_root}/{fldr}' for fldr in os.listdir(ct_root)]
     
-    seg_fldr = list(filter(lambda x: x[-8:-6] != 'NA', contents))[0]
+    fldrs = list(filter(lambda x: x[-8:-6] != 'NA', contents))
+    
+    if len(fldrs) == 0:
+        return None
+    
+    seg_fldr = fldrs[0]
     seg_fname = f'{seg_fldr}/{os.listdir(seg_fldr)[0]}' 
     
     ds = dicom.dcmread(seg_fname)

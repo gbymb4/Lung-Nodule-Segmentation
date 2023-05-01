@@ -45,6 +45,9 @@ def preprocess_ct(ct_fname, seg_fname):
     
     seg = load_nsclc_seg(seg_fname)
     
+    if seg is None:
+        return None, None
+    
     clean_ct_mask = clean_nsclc_ct(ct)
     ct = apply_mask(ct, clean_ct_mask)
     
@@ -90,10 +93,17 @@ def main():
     for i, (subset_ct_fnames, subset_seg_fnames) in enumerate(zip(subsets_ct_fnames, subsets_seg_fnames)):
         subset = i
         
+        offset = 0
         for j, (ct_fname, seg_fname) in enumerate(zip(subset_ct_fnames, subset_seg_fnames)):
             x, y = preprocess_ct(ct_fname, seg_fname)
+            
+            scan_idx = j - offset
+            
+            if x is None and y is None:
+                offset += 1
+                continue
         
-            if subset == 0 and j == 0:
+            if subset == 0 and scan_idx == 0:
                 gif_name = f'{NSCLC_PREPROCESSED_DATA_DIR}/example_mask.gif'
                 
                 plot_x = float16_to_float64(x)
@@ -110,9 +120,9 @@ def main():
                 
                 plot_and_save_gif(to_plot, gif_name, titles=titles, verbose=True)
         
-            print(f'saving subset {subset + 1} instance {j + 1}...', end='')
+            print(f'saving subset {subset + 1} instance {scan_idx + 1}...', end='')
             
-            save_instance('NSCLC', subset, j, x, y)
+            save_instance('NSCLC', subset, scan_idx, x, y)
             
             print('done')
             
