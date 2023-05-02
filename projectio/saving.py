@@ -5,7 +5,7 @@ Created on Mon Apr  3 16:51:47 2023
 @author: Gavin
 """
 
-import imageio, os, time, json, torch
+import imageio, os, time, json, torch, yaml
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -83,6 +83,7 @@ def save_instance(
 def save_history_dict_and_model(
     dataset: str,
     model: nn.Module,
+    config: dict,
     train_idx: int,
     history: dict
 ) -> None:
@@ -102,5 +103,8 @@ def save_history_dict_and_model(
 
     with open(f'{save_dir}/history.json', 'w') as file:
         json.dump(history, file)
+
+    with open(f'{save_dir}/config.yaml', 'w') as file:
+        yaml.safe_dump(config, file)
 
     torch.save(model.state_dict(), f'{save_dir}/model')
