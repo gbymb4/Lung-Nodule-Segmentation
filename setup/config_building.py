@@ -31,4 +31,4 @@ def prepare_config(
     loading_kwargs = config['loading_arguments']
     dataloader_kwargs = config['dataloader_arguments']
 
-    return seed, dataset, model, optim_kwargs, loading_kwargs, dataloader_kwargs
+    return seed, dataset, model, device, optim_kwargs, loading_kwargs, dataloader_kwargs
