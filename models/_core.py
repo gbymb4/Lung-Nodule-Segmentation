@@ -77,6 +77,35 @@ class RR2DBlock(nn.Module):
         
         return out4
     
+
+
+class RR3DBlock(nn.Module):
+    
+    def __init__(
+        self, 
+        channels
+    ):
+        super().__init__()
+        
+        self.rcl1 = RCL3D(channels)
+        self.bn1 = nn.BatchNorm3d(channels)
+        self.a1 = nn.ReLU()
+        
+        self.rcl2 = RCL3D(channels)
+        self.bn2 = nn.BatchNorm3d(channels)
+        self.a2 = nn.ReLU()
+        
+        
+        
+    def forward(self, x):
+        out1 = self.a1(self.bn1(self.rcl1(x)))
+        out2 = self.rcl2(out1)
+        
+        out3 = self.bn2(out2 + x)
+        out4 = self.a2(out3)
+        
+        return out4
+    
     
     
 class RREL2D(nn.Module):
@@ -104,14 +133,59 @@ class RREL2D(nn.Module):
             )
         
         self.a = nn.ReLU()
+        self.bn = nn.BatchNorm3d(out_channels)
         self.b = RR2DBlock(out_channels)
         
     
     
     def forward(self, x):
-        return self.b(self.a(self.cn(x)))
+        return self.b(self.bn(self.a(self.cn(x))))
+    
 
 
+class DRREL(nn.Module):
+    
+    def __init__(self, in_channels, out_channels, enc_ratio):
+        super().__init__()
+        
+        if enc_ratio > 2:
+            self.cn = nn.Conv3d(
+                in_channels,
+                out_channels, 
+                kernel_size=(3, enc_ratio, enc_ratio), 
+                padding=(1, 1, 1),
+                stride=(1, enc_ratio, enc_ratio)
+            )
+        else: 
+            k = max(enc_ratio, 3)
+            
+            self.cn = nn.Conv3d(
+                in_channels,
+                out_channels, 
+                kernel_size=(3, k, k), 
+                padding=(1, 1, 1),
+                stride=(1, enc_ratio, enc_ratio)
+            )
+          
+        self.a = nn.ReLU()
+        self.bn = nn.BatchNorm3d(out_channels)
+        
+        self.b_1 = RR2DBlock(out_channels)
+        self.b_2 = RR3DBlock(out_channels)
+        
+    
+    
+    def forward(self, x):
+        out1 = self.bn(self.a(self.cn(x))) 
+        
+        out2 = self.b_1(out1)
+        out3 = self.b_2(out1)
+
+        out4 = out2 + out3
+        
+        return out4
+    
+    
 
 class RRDL2D(nn.Module):
     
@@ -160,6 +234,65 @@ class RRDL2D(nn.Module):
         out = self.b(self.bn_2(self.a_2(self.cn(out))))
 
         return out
+    
+    
+
+class DRRDL(nn.Module):
+    
+    def __init__(self, in_channels, out_channels, dec_ratio):
+        super().__init__()
+        
+        if dec_ratio == 5:
+            self.dcn = nn.ConvTranspose3d(
+                in_channels,
+                out_channels, 
+                kernel_size=(1, 5, 5),
+                padding=(0, 0, 0),
+                stride=(1, 1, 1)
+            )    
+        else:
+            self.dcn = nn.ConvTranspose3d(
+                in_channels,
+                out_channels, 
+                kernel_size=(1, dec_ratio, dec_ratio),
+                padding=(0, 0, 0),
+                stride=(1, dec_ratio, dec_ratio)
+            )
+        
+        self.a_1 = nn.ReLU()
+        self.bn_1 = nn.BatchNorm3d(out_channels)
+        
+        self.cn = nn.Conv3d(
+            out_channels * 2,
+            out_channels, 
+            kernel_size=(3, 3, 3),
+            padding=(1, 1, 1),
+            stride=(1, 1, 1)
+        )
+        
+        self.a_2 = nn.ReLU()
+        self.bn_2 = nn.BatchNorm3d(out_channels)
+        
+        self.b_1 = RR2DBlock(out_channels)
+        self.b_2 = RR3DBlock(out_channels)
+        
+        
+        
+    def forward(self, x, skip):
+        if len(x.shape) == 5:
+            dim = 1
+        elif len(x.shape) == 4:
+            dim = 0
+        
+        out1 = torch.cat((self.bn_1(self.a_1(self.dcn(x))), skip), dim=dim)
+        out1 = self.bn_2(self.a_2(self.cn(out1)))
+        
+        out2 = self.b_1(out1)
+        out3 = self.b_2(out1)
+        
+        out4 = out2 + out3
+
+        return out4
     
 
 

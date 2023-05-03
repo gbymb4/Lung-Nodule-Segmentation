@@ -5,10 +5,8 @@ Created on Thu Apr 13 14:16:21 2023
 @author: Gavin
 """
 
-import torch
-
 from torch import nn
-from .._core import R2DBlock, RREL2D, RRDL2D
+from .._core import RREL2D, RRDL2D
 
 class R2UNet(nn.Module):
     
