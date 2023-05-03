@@ -75,6 +75,10 @@ class DualR2UnetFPN(nn.Module):
             backbone.load_state_dict(torch.load(pretrained_model_fname))
             
         backbone = DualR2UNetFE(backbone)
+        
+        for param in backbone.parameters():
+            param.requires_grad = False
+        
         backbone.eval()
         
         self.backbone = backbone
