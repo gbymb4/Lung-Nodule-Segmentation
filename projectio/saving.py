@@ -106,5 +106,8 @@ def save_history_dict_and_model(
 
     with open(f'{save_dir}/config.yaml', 'w') as file:
         yaml.safe_dump(config, file)
+        
+    for param in model.parameters():
+        param.requires_grad = True
 
     torch.save(model.state_dict(), f'{save_dir}/model')
