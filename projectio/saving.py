@@ -92,7 +92,7 @@ def save_history_dict_and_model(
 
     if not os.path.isdir(OUT_DIR): os.mkdir(OUT_DIR)
 
-    save_root_dir = f'{OUT_DIR}/dataset'
+    save_root_dir = f'{OUT_DIR}/{dataset}'
     if not os.path.isdir(save_root_dir): os.mkdir(save_root_dir)
 
     save_parent_dir = f'{save_root_dir}/{model_name}'
