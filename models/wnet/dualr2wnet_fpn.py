@@ -9,9 +9,9 @@ import torch
 
 from torch import nn
 from pconfig import OUT_DIR
-from .dualr2unet import DualR2WNet
+from .dualr2wnet import DualR2WNet
 
-class DualR2UNetFE(nn.Module):
+class DualR2WNetFE(nn.Module):
     
     def __init__(self, backbone) -> None:
         super().__init__()
@@ -55,9 +55,9 @@ class DualR2UNetFE(nn.Module):
                 out24, out25
             ]
             
-            return fmaps
+            return fmaps[::-1]
         
-        backbone.foward = backbone_forward.__get__(backbone, DualR2WNet)
+        backbone.forward = backbone_forward.__get__(backbone, DualR2WNet)
         
         self.backbone = backbone
         
@@ -68,7 +68,7 @@ class DualR2UNetFE(nn.Module):
     
 
 
-class DualR2UnetFPN(nn.Module):
+class DualR2UWetFPN(nn.Module):
     
     def __init__(self,
         pretrained_config=None, 
@@ -92,7 +92,7 @@ class DualR2UnetFPN(nn.Module):
             
             backbone.load_state_dict(torch.load(pretrained_model_fname))
             
-        backbone = DualR2UNetFE(backbone)
+        backbone = DualR2WNetFE(backbone)
         
         for param in backbone.parameters():
             param.requires_grad = False
@@ -102,46 +102,87 @@ class DualR2UnetFPN(nn.Module):
         self.backbone = backbone
         
         channels = backbone_kwargs['channels']
-        
-        self.dcn_1 = nn.ConvTranspose3d(
-            channels * 8 * 2, 
-            channels, 
-            kernel_size=(1, 8, 8), 
-            stride=(1, 8, 8), 
-            padding=(0, 0, 0)
-        )
-        self.dcn_2 = nn.ConvTranspose3d(
-            channels * 4 * 2, 
-            channels, 
-            kernel_size=(1, 4, 4), 
-            stride=(1, 4, 4), 
-            padding=(0, 0, 0)
-        )
-        self.dcn_3 = nn.ConvTranspose3d(
-            channels * 2 * 2, 
-            channels, 
-            kernel_size=(1, 2, 2), 
-            stride=(1, 2, 2), 
-            padding=(0, 0, 0)
-        )
-        
-        self.cn_1 = nn.Conv3d(
+
+        self.cn1 = nn.Conv3d(
             channels * 2,
-            channels, 
+            channels,
             kernel_size=(3, 3, 3),
             stride=(1, 1, 1),
             padding=(1, 1, 1)
         )
-        self.cn_2 = nn.Conv3d(
+        self.bn1 = nn.BatchNorm3d(channels)
+        self.a1 = nn.ReLU()
+        self.l1 = nn.Sequential(self.cn1, self.bn1, self.a1)
+
+        self.cn2 = nn.Conv3d(
+            channels * 2 * 2,
+            channels * 2,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.bn2_1 = nn.BatchNorm3d(channels * 2)
+        self.a2_1 = nn.ReLU()
+        self.dcn2 = nn.ConvTranspose3d(
+            channels * 2,
+            channels,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+            padding=(0, 0, 0)
+        )
+        self.bn2_2 = nn.BatchNorm3d(channels)
+        self.a2_2 = nn.ReLU()
+        self.l2 = nn.Sequential(self.cn2, self.bn2_1, self.a2_1, self.dcn2, self.bn2_2, self.a2_2)
+
+        self.cn3 = nn.Conv3d(
+            channels * 4 * 2,
+            channels * 4,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.bn3_1 = nn.BatchNorm3d(channels * 4)
+        self.a3_1 = nn.ReLU()
+        self.dcn3 = nn.ConvTranspose3d(
+            channels * 4 * 2,
+            channels,
+            kernel_size=(1, 4, 4),
+            stride=(1, 4, 4),
+            padding=(0, 0, 0)
+        )
+        self.bn3_2 = nn.BatchNorm3d(channels)
+        self.a3_2 = nn.ReLU()
+        self.l3 = nn.Sequential(self.cn3, self.bn3_1, self.a3_1, self.dcn3, self.bn3_2, self.a3_2)
+
+        self.cn4 = nn.Conv3d(
+            channels * 8 * 2,
+            channels * 8,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.bn4_1 = nn.BatchNorm3d(channels * 8)
+        self.a4_1 = nn.ReLU()
+        self.dcn4 = nn.ConvTranspose3d(
+            channels * 8,
+            channels,
+            kernel_size=(1, 8, 8),
+            stride=(1, 8, 8),
+            padding=(0, 0, 0)
+        )
+        self.bn4_2 = nn.BatchNorm3d(channels)
+        self.a4_2 = nn.ReLU()
+        self.l4 = nn.Sequential(self.cn4, self.bn4_1, self.a4_1, self.dcn4, self.bn4_2, self.a4_2)
+
+        self.cn_out = nn.Conv3d(
             channels,
             1,
             kernel_size=(3, 3, 3),
             padding=(1, 1, 1),
             stride=(1, 1, 1)
         )
-        
-        self.a_1 = nn.ReLU()
-        self.a_2 = nn.Sigmoid()
+
+        self.a_out = nn.Sigmoid()
     
     
     def forward(self, x):
@@ -152,12 +193,11 @@ class DualR2UnetFPN(nn.Module):
         
         fmaps = self.backbone(x)
         
-        out1 = self.dnc_1(torch.cat((fmaps[0] + fmaps[4]), dim=dim))
-        out2 = self.dnc_2(torch.cat((fmaps[1] + fmaps[5]), dim=dim))
-        out3 = self.dnc_3(torch.cat((fmaps[2] + fmaps[6]), dim=dim))
-        out4 = self.cn_1(torch.cat((fmaps[3] + fmaps[7]), dim=dim))
-        
-        out5 = self.a_1(out1 + out2 + out3 + out4)
-        out5 = self.a_2(self.cn_2(out5))
+        out1 = self.l1(torch.cat((fmaps[0], fmaps[4]), dim=dim))
+        out2 = self.l2(torch.cat((fmaps[1], fmaps[5]), dim=dim))
+        out3 = self.l3(torch.cat((fmaps[2], fmaps[6]), dim=dim))
+        out4 = self.l4(torch.cat((fmaps[3], fmaps[7]), dim=dim))
+
+        out5 = self.a_out(self.cn_out(out1 + out2 + out3 + out4))
             
         return out5

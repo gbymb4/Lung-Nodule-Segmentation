@@ -373,3 +373,154 @@ class RCL3D(nn.Module):
             x = self.relu(z)
             x = self.bn[i](x)
         return x
+
+
+class BiFPNBlock(nn.Module):
+
+    def __init__(self, channels):
+        self.cn1 = nn.Conv3d(
+            channels,
+            channels,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.cn1_a = nn.ReLU()
+        self.cn1_bn = nn.BatchNorm3d(channels)
+        self.l1_cn = nn.Sequential(self.cn1, self.cn1_bn, self.cn1_a)
+
+        self.ds1 = nn.Conv3d(
+            channels,
+            channels * 2,
+            kernel_size=(3, 3, 3),
+            stride=(1, 2, 2),
+            padding=(1, 1, 1)
+        )
+        self.ds1_a = nn.ReLU()
+        self.ds1_bn = nn.BatchNorm3d(channels * 2)
+        self.l1_ds = nn.Sequential(self.ds1, self.ds1_bn, self.ds1_a)
+        self.us1 = nn.ConvTranspose3d(
+            channels * 2,
+            channels,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+            padding=(0, 0, 0)
+        )
+        self.us1_a = nn.ReLU()
+        self.us1_bn = nn.BatchNorm3d(channels)
+        self.l1_us = nn.Sequential(self.us1, self.us1_bn, self.us1_a)
+
+        self.cn2_1 = nn.Conv3d(
+            channels * 2,
+            channels * 2,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.cn2_1_a = nn.ReLU()
+        self.cn2_1_bn = nn.BatchNorm3d(channels * 2)
+        self.l2_1_cn = nn.Sequential(self.cn2_1, self.cn2_1_bn, self.cn2_1_a)
+        self.cn2_2 = nn.Conv3d(
+            channels * 2,
+            channels * 2,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.cn2_2_a = nn.ReLU()
+        self.cn2_2_bn = nn.BatchNorm3d(channels * 2)
+        self.l2_2_cn = nn.Sequential(self.cn2_2, self.cn2_2_bn, self.cn2_2_a)
+
+        self.ds2 = nn.Conv3d(
+            channels * 2,
+            channels * 4,
+            kernel_size=(3, 3, 3),
+            stride=(1, 2, 2),
+            padding=(1, 1, 1)
+        )
+        self.ds2_a = nn.ReLU()
+        self.ds2_bn = nn.BatchNorm3d(channels * 4)
+        self.l2_ds = nn.Sequential(self.ds2, self.ds2_bn, self.ds2_a)
+        self.us2 = nn.ConvTranspose3d(
+            channels * 4,
+            channels * 2,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+            padding=(0, 0, 0)
+        )
+        self.us2_a = nn.ReLU()
+        self.us2_bn = nn.BatchNorm3d(channels * 2)
+        self.l2_us = nn.Sequential(self.us2, self.us2_bn, self.us2_a)
+
+        self.cn3_1 = nn.Conv3d(
+            channels * 4,
+            channels * 4,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.cn3_1_a = nn.ReLU()
+        self.cn3_1_bn = nn.BatchNorm3d(channels * 4)
+        self.l3_1_cn = nn.Sequential(self.cn3_1, self.cn3_1_bn, self.cn3_1_a)
+        self.cn3_2 = nn.Conv3d(
+            channels * 4,
+            channels * 4,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.cn3_2_a = nn.ReLU()
+        self.cn3_2_bn = nn.BatchNorm3d(channels * 4)
+        self.l3_2_cn = nn.Sequential(self.cn3_2, self.cn3_2_bn, self.cn3_2_a)
+
+        self.ds3 = nn.Conv3d(
+            channels * 4,
+            channels * 8,
+            kernel_size=(3, 3, 3),
+            stride=(1, 2, 2),
+            padding=(1, 1, 1)
+        )
+        self.ds3_a = nn.ReLU()
+        self.ds3_bn = nn.BatchNorm3d(channels * 8)
+        self.l3_ds = nn.Sequential(self.ds3, self.ds3_bn, self.ds3_a)
+        self.us3 = nn.ConvTranspose3d(
+            channels * 8,
+            channels * 4,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+            padding=(0, 0, 0)
+        )
+        self.us3_a = nn.ReLU()
+        self.us3_bn = nn.BatchNorm3d(channels * 4)
+        self.l3_us = nn.Sequential(self.us3, self.us3_us, self.us3_a)
+
+        self.cn4 = nn.Conv3d(
+            channels * 8,
+            channels * 8,
+            kernel_size=(3, 3, 3),
+            stride=(1, 1, 1),
+            padding=(1, 1, 1)
+        )
+        self.cn4_a = nn.ReLU()
+        self.cn4_bn = nn.BatchNorm3d(channels * 8)
+        self.l4_cn = nn.Sequential(self.cn4, self.cn4_bn, self.cn4_a)
+
+
+
+    def forward(self, fmaps):
+        l1_in, l2_in, l3_in, l4_in = fmaps
+
+        out2_1 = self.l2_1_cn(l2_in + self.l1_ds(l1_in))
+        out3_1 = self.l3_1_cn(l3_in + self.l2_ds(out2_1))
+
+        out4 = self.l4_cn(l4_in + self.l3_ds(out3_1))
+
+        out3_2 = self.l3_2_cn(self.l3_us(out4) + out3_1 + l3_in)
+        out2_2 = self.l2_2_cn(self.l2_us(out3_2) + out2_1 + l2_in)
+
+        out1 = self.l1_cn(self.l1_us(out2_2) + l1_in)
+
+        out = [out1, out2_2, out3_2, out4]
+
+        return out
+

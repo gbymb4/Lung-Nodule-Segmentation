@@ -37,20 +37,20 @@ class DualR2UNetFE(nn.Module):
                 out12, out13
             ]
             
-            return fmaps
+            return fmaps[::-1]
         
-        backbone.foward = backbone_forward.__get__(backbone, DualR2UNet)
+        backbone.forward = backbone_forward.__get__(backbone, DualR2UNet)
         
         self.backbone = backbone
         
-    
+
     
     def forward(self, x):
         return self.backbone(x)
     
 
 
-class DualR2UnetFPN(nn.Module):
+class DualR2UNetFPN(nn.Module):
     
     def __init__(self,
         pretrained_config=None, 
@@ -84,49 +84,55 @@ class DualR2UnetFPN(nn.Module):
         self.backbone = backbone
         
         channels = backbone_kwargs['channels']
-        
-        self.dcn_1 = nn.ConvTranspose3d(
+
+        self.dcn2 = nn.ConvTranspose3d(
+            channels * 2,
+            channels,
+            kernel_size=(1, 2, 2),
+            stride=(1, 2, 2),
+            padding=(0, 0, 0)
+        )
+        self.bn2 = nn.BatchNorm3d(channels)
+        self.a2 = nn.ReLU()
+
+        self.dcn3 = nn.ConvTranspose3d(
+            channels * 4,
+            channels,
+            kernel_size=(1, 4, 4),
+            stride=(1, 4, 4),
+            padding=(0, 0, 0)
+        )
+        self.bn3 = nn.BatchNorm3d(channels)
+        self.a3 = nn.ReLU()
+
+        self.dcn4 = nn.ConvTranspose3d(
             channels * 8, 
             channels, 
             kernel_size=(1, 8, 8), 
             stride=(1, 8, 8), 
             padding=(0, 0, 0)
         )
-        self.dcn_2 = nn.ConvTranspose3d(
-            channels * 4, 
-            channels, 
-            kernel_size=(1, 4, 4), 
-            stride=(1, 4, 4), 
-            padding=(0, 0, 0)
-        )
-        self.dcn_3 = nn.ConvTranspose3d(
-            channels * 2, 
-            channels, 
-            kernel_size=(1, 2, 2), 
-            stride=(1, 2, 2), 
-            padding=(0, 0, 0)
-        )
+        self.bn4 = nn.BatchNorm3d(channels)
+        self.a4 = nn.ReLU()
         
-        self.cn = nn.Conv3d(
+        self.cn_out = nn.Conv3d(
             channels,
             1,
             kernel_size=(3, 3, 3),
             padding=(1, 1, 1),
             stride=(1, 1, 1)
         )
-        self.a = nn.Sigmoid()
+        self.a_out = nn.Sigmoid()
     
     
     def forward(self, x):
         fmaps = self.backbone(x)
         
-        out1 = self.dnc_1(fmaps[0])
-        out2 = self.dnc_2(fmaps[1])
-        out3 = self.dnc_3(fmaps[2])
-        out4 = fmaps[3]
-        
-        out5 = out1 + out2 \
-            + out3 + out4
-        out5 = self.a(self.cn(out5))
+        out1 = fmaps[0]
+        out2 = self.a2(self.bn2(self.dnc2(fmaps[1])))
+        out3 = self.a3(self.bn3(self.dnc3(fmaps[2])))
+        out4 = self.a4(self.bn4(self.dnc4(fmaps[4])))
+
+        out5 = self.a_out(self.cn_out(out1 + out2 + out3 + out4))
             
         return out5
