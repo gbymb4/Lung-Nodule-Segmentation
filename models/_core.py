@@ -377,7 +377,7 @@ class RCL3D(nn.Module):
 
 class BiFPNBlock(nn.Module):
 
-    def __init__(self, channels):
+    def __init__(self, channels, size=360):
         self.cn1 = nn.Conv3d(
             channels,
             channels,
@@ -505,20 +505,65 @@ class BiFPNBlock(nn.Module):
         self.cn4_bn = nn.BatchNorm3d(channels * 8)
         self.l4_cn = nn.Sequential(self.cn4, self.cn4_bn, self.cn4_a)
 
+        self.l1_in_w = nn.Parameter(torch.rand(1))
+        self.l2_in_w = nn.Parameter(torch.rand(1))
+        self.l3_in_w = nn.Parameter(torch.rand(1))
+        self.l4_in_w = nn.Parameter(torch.rand(1))
+
+        self.l1_ds_w = nn.Parameter(torch.rand(1))
+        self.l2_ds_w = nn.Parameter(torch.rand(1))
+        self.l3_ds_w = nn.Parameter(torch.rand(1))
+
+        self.l1_us_w = nn.Parameter(torch.rand(1))
+        self.l2_us_w = nn.Parameter(torch.rand(1))
+        self.l3_us_w = nn.Parameter(torch.rand(1))
+
+        self.l1_ds_w = nn.Parameter(torch.rand(1))
+        self.l2_ds_w = nn.Parameter(torch.rand(1))
+        self.l3_ds_w = nn.Parameter(torch.rand(1))
+
+        self.out2_1_w = nn.Parameter(torch.rand(1))
+        self.out3_1_w = nn.Parameter(torch.rand(1))
+
+        self.out2_2_w = nn.Parameter(torch.rand(1))
+        self.out3_2_w = nn.Parameter(torch.rand(1))
+
+        self.out1_w = nn.Parameter(torch.rand(1))
+        self.out4_w = nn.parameter(torch.rand(1))
+
+        self.e = 1e-4
 
 
     def forward(self, fmaps):
         l1_in, l2_in, l3_in, l4_in = fmaps
 
-        out2_1 = self.l2_1_cn(l2_in + self.l1_ds(l1_in))
-        out3_1 = self.l3_1_cn(l3_in + self.l2_ds(out2_1))
+        out2_1 = self.l2_1_cn(
+            (self.l2_in_w * l2_in + self.l1_ds_w * self.l1_ds(l1_in)) /
+            (self.l2_in_w + self.l1_ds_w + self.e)
+        )
+        out3_1 = self.l3_1_cn(
+            (self.l3_in_w * l3_in + self.l2_ds_w + self.l2_ds(out2_1)) /
+            (self.l3_in_w + self.l2_ds_w + self.e)
+        )
 
-        out4 = self.l4_cn(l4_in + self.l3_ds(out3_1))
+        out4 = self.l4_cn(
+            (self.l4_in_w * l4_in + self.l3_ds * self.l3_ds(out3_1)) /
+            (self.l4_in_w + self.l3_ds + self.e)
+        )
 
-        out3_2 = self.l3_2_cn(self.l3_us(out4) + out3_1 + l3_in)
-        out2_2 = self.l2_2_cn(self.l2_us(out3_2) + out2_1 + l2_in)
+        out3_2 = self.l3_2_cn(
+            (self.l3_us_w * self.l3_us(out4) + self.out3_1_w * out3_1 + self.l3_in_w * l3_in) /
+            (self.l3_us_w + self.out3_1_w + self.l3_in_w + self.e)
+        )
+        out2_2 = self.l2_2_cn(
+            (self.l2_us_w * self.l2_us(out3_2) + self.out_2_1_w * out2_1 + self.l2_in_w * l2_in) /
+            (self.l2_us_w + self.out_2_1_w + self.l2_in_w + self.e)
+        )
 
-        out1 = self.l1_cn(self.l1_us(out2_2) + l1_in)
+        out1 = self.l1_cn(
+            (self.l1_us_w * self.l1_us(out2_2) + self.l1_in_w * l1_in) /
+            (self.l1_us_w + self.l1_in_w + self.e)
+        )
 
         out = [out1, out2_2, out3_2, out4]
 
