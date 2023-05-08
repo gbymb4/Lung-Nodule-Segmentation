@@ -5,12 +5,14 @@ from torch import nn
 class UNet(nn.Module):
 
     def __init__(self, channels, img_channels=1):
+        super().__init__()
+
         self.b1 = UNetBlock(img_channels, channels)
 
         self.mp2 = nn.MaxPool3d(
             kernel_size=(1, 2, 2),
             stride=(1, 2, 2),
-            padding=(0, 1, 1)
+            padding=(0, 0, 0)
         )
 
         self.b3 = UNetBlock(channels, channels * 2)
@@ -18,7 +20,7 @@ class UNet(nn.Module):
         self.mp4 = nn.MaxPool3d(
             kernel_size=(1, 2, 2),
             stride=(1, 2, 2),
-            padding=(0, 1, 1)
+            padding=(0, 0, 0)
         )
 
         self.b5 = UNetBlock(channels * 2, channels * 4)
@@ -26,7 +28,7 @@ class UNet(nn.Module):
         self.mp6 = nn.MaxPool3d(
             kernel_size=(1, 2, 2),
             stride=(1, 2, 2),
-            padding=(0, 1, 1)
+            padding=(0, 0, 0)
         )
 
         self.b7 = UNetBlock(channels * 4, channels * 8)
@@ -34,7 +36,7 @@ class UNet(nn.Module):
         self.mp8 = nn.MaxPool3d(
             kernel_size=(1, 2, 2),
             stride=(1, 2, 2),
-            padding=(0, 1, 1)
+            padding=(0, 0, 0)
         )
 
         self.b9 = UNetBlock(channels * 8, channels * 16)
@@ -102,9 +104,9 @@ class UNet(nn.Module):
         out5 = self.b9(self.mp8(out4))
 
         out6 = self.b11(torch.cat((out4, self.up10(out5)), dim=dim))
-        out7 = self.b13(torch.cat((out3, self.up10(out6)), dim=dim))
-        out8 = self.b15(torch.cat((out2, self.up10(out7)), dim=dim))
-        out9 = self.b17(torch.cat((out1, self.up10(out8)), dim=dim))
+        out7 = self.b13(torch.cat((out3, self.up12(out6)), dim=dim))
+        out8 = self.b15(torch.cat((out2, self.up14(out7)), dim=dim))
+        out9 = self.b17(torch.cat((out1, self.up16(out8)), dim=dim))
 
         out10 = self.a17(self.cn17(out9))
 
@@ -115,6 +117,8 @@ class UNet(nn.Module):
 class UNetBlock(nn.Module):
 
     def __init__(self, in_channels, out_channels):
+        super().__init__()
+
         self.cn1 = nn.Conv3d(
             in_channels,
             out_channels,
@@ -137,6 +141,6 @@ class UNetBlock(nn.Module):
 
     def forward(self, x):
         out = self.a1(self.cn1(x))
-        out = self.a2(self.cn2(x))
+        out = self.a2(self.cn2(out))
 
         return out
