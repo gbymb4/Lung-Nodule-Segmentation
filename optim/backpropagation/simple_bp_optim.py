@@ -12,6 +12,7 @@ import numpy as np
 from torch import nn
 from torch.utils.data import DataLoader
 from typing import List
+from optim import WeightedBCELoss
 
 class SimpleBPOptimizer:
     
@@ -27,8 +28,28 @@ class SimpleBPOptimizer:
         self.train_loader = train
         self.valid_loader = valid
         self.device = device
-        
-        
+        self.positive_weight = self.__compute_positive_weight()
+
+
+
+    def __compute_positive_weight(self):
+        positive_voxels = 0
+        negative_voxels = 0
+
+        for batch in self.train_loader:
+            _, ys = batch
+            ys = ys.cpu().detach().numpy()
+
+            positive = ys.sum()
+            total = np.array(ys.shape).prod()
+            negative = total - positive
+
+            positive_voxels += positive
+            negative_voxels += negative
+
+        return negative_voxels / positive_voxels
+
+
         
     def execute(self, epochs=100, lr=1e-5, cum_batch_size=32, valid_freq=10, verbose=True) -> List[dict]:
         history = []
@@ -36,7 +57,7 @@ class SimpleBPOptimizer:
         start = time.time()
 
         optim = torch.optim.Adam(self.model.parameters(), lr=lr)
-        criterion = nn.BCELoss()
+        criterion = WeightedBCELoss(self.positive_weight)
         
         print('#'*32)
         print('beginning BP training loop...')
