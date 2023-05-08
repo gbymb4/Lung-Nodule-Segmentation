@@ -321,7 +321,15 @@ class LNSegDatasetNodules(LNSegDataset):
             transforms: Union[Iterable[Callable], None] = None,
             transform_kwargs: Union[Iterable[dict], None] = None
     ) -> None:
-        super().__init__()
+        super().__init__(
+            dataset,
+            subset,
+            load_ct_dims,
+            load_limit,
+            device,
+            transforms,
+            transform_kwargs
+        )
 
         assert load_limit is None or load_limit > 0
 
@@ -393,7 +401,7 @@ class LNSegDatasetNodules(LNSegDataset):
 
 
 def prepare_dataset(inputs):
-    return inputs[0](*inputs[1:], **inputs[1])
+    return inputs[0][0](*inputs[0][1:], **inputs[1])
 
 
 
