@@ -23,7 +23,8 @@ def main():
     config_dict = parse_config(config_fname)
     config = prepare_config(config_dict)
 
-    seed, dataset, model_type, device, optim_kwargs, loading_kwargs, dataloader_kwargs = config
+    seed, dataset, dataset_type, model_type, device, *all_kwargs = config
+    optim_kwargs, loading_kwargs, dataloader_kwargs = all_kwargs
 
     set_seed(seed)
 

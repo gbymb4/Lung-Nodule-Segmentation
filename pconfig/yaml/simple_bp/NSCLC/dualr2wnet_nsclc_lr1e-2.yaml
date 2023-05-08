@@ -1,5 +1,6 @@
 seed: 0
 dataset: NSCLC
+dataset_type: nodules
 model: DualR2WNet
 device: cuda
 optimizer_arguments:

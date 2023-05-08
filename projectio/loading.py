@@ -306,15 +306,98 @@ class LNSegDataset(Dataset):
         ys = self.ys[idx]
         
         return xs, ys
+
+
+
+class LNSegDatasetNodules(LNSegDataset):
+
+    def __init__(
+            self,
+            dataset: str,
+            subset: int,
+            load_ct_dims: Union[List[int], None] = None,
+            load_limit: Union[int, None] = None,
+            device: str = 'cpu',
+            transforms: Union[Iterable[Callable], None] = None,
+            transform_kwargs: Union[Iterable[dict], None] = None
+    ) -> None:
+        super().__init__()
+
+        assert load_limit is None or load_limit > 0
+
+        if dataset.lower() == 'luna16':
+            data_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/subset{subset}'
+        elif dataset.lower() == 'nsclc':
+            data_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/subset{subset}'
+        else:
+            raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+
+        instance_dirs = [f'{data_dir}/{instance_id}' for instance_id in os.listdir(data_dir)]
+
+        def load_instance(instance_dir: str) -> Tuple[torch.Tensor, torch.Tensor]:
+            x = np.load(f'{instance_dir}/X.npy')
+            y = np.load(f'{instance_dir}/y.npy')
+
+            x = x.swapaxes(1, 3)
+            x = x.swapaxes(0, 1)
+
+            y = y[:, :, :, np.newaxis].swapaxes(1, 3)
+            y = y.swapaxes(0, 1)
+
+            if load_ct_dims is not None:
+                x = x[np.array(load_ct_dims), :, :, :]
+
+            filter_idxs = y.reshape(y.shape[1], -1).sum(axis=1) > 0
+            dilated_idxs = np.convolve(filter_idxs, np.array([1, 1]), mode='same')
+            filter_idxs[dilated_idxs > 0] = 1
+
+            start_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == 1)
+            end_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == -1)
+
+            filter_idx_regions = [np.zeros_like(filter_idxs) for _ in range(len(start_idx))]
+
+            for i, (start, end) in enumerate(zip(start_idx, end_idx)):
+                filter_idx_regions[i][start:end + 1] = filter_idxs[start:end + 1]
+
+            x_splits, y_splits = [], []
+
+            for i, region_idxs in enumerate(filter_idx_regions):
+                x_splits.append(x[:, region_idxs, :, :])
+                y_splits.append(y[:, region_idxs, :, :])
+
+            for i, (x_split, y_split) in enumerate(zip(x_splits, y_splits)):
+                if transforms is not None:
+                    for transform, kwargs in zip(transforms, transform_kwargs):
+                        x_split, y_split = transform(x_split, y_split, **kwargs)
+
+                x_split = torch.from_numpy(x_split).type(torch.float16)
+                x_split = x_split.to(device)
+
+                y_split = torch.from_numpy(y_split).type(torch.int8)
+                y_split = y_split.to(device)
+
+                x_splits[i] = x_split
+                y_splits[i] = y_split
+
+            return x_splits, y_splits
+
+        self.xs, self.ys = [], []
+
+        for instance_dir in instance_dirs:
+            x_splits, y_splits = load_instance(instance_dir)
+
+            for x_split, y_split in zip(x_splits, y_splits):
+                self.xs.append(x_split)
+                self.ys.append(y_split)
     
 
 
 def prepare_dataset(inputs):
-    return LNSegDataset(*inputs[0], **inputs[1])
+    return inputs[0](*inputs[1:], **inputs[1])
 
 
 
-def prepare_datasets(dataset, num_workers=1, **kwargs):
+def prepare_datasets(dataset, dataset_type, num_workers=1, **kwargs):
     assert num_workers > 0
 
     if dataset.lower() == 'luna16':
@@ -327,9 +410,9 @@ def prepare_datasets(dataset, num_workers=1, **kwargs):
     subsets_count = len([subset_dir for subset_dir in os.listdir(data_dir) if subset_dir[:6] == 'subset'])
 
     if num_workers == 1:
-        datasets = [prepare_dataset(dataset, i, **kwargs) for i in range(subsets_count)]
+        datasets = [prepare_dataset(dataset_type, dataset, i, **kwargs) for i in range(subsets_count)]
     else:
-        all_args = [(dataset, i) for i in range(subsets_count)]
+        all_args = [(dataset_type, dataset, i) for i in range(subsets_count)]
         all_kwargs = [kwargs for _ in range(subsets_count)]
         pool_arguments = list(zip(all_args, all_kwargs))
 
