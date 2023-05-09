@@ -41,9 +41,7 @@ def prepare_config(
     loading_kwargs = config['loading_arguments']
     dataloader_kwargs = config['dataloader_arguments']
 
-    if 'zoom_transform' in loading_kwargs.keys() and loading_kwargs['zoom_transform']:
-        del loading_kwargs['zoom_transform']
-
+    if 'zoom_transform' in config.keys() and config['zoom_transform']:
         transforms = [zoom_and_resize_ct_and_seg]
         transform_kwargs = [{'new_size': 360}]
     else:
