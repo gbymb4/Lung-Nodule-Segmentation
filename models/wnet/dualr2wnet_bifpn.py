@@ -34,7 +34,7 @@ class DualR2WNetBiFPN(DualR2WNetFPN):
             dim = 0
 
         fmaps = self.backbone(x)
-        fmaps = [torch.cat((fmaps[i], fmaps[i + len(fmaps)] for i in range(len(fmaps // 2))))]
+        fmaps = [torch.cat((fmaps[i], fmaps[i + len(fmaps)]), dim=dim) for i in range(len(fmaps // 2))]
 
         fmaps[0] = self.a1(self.bn1(self.cn1(fmaps[0])))
         fmaps[1] = self.a2_1(self.bn2_1(self.cn2(fmaps[1])))
