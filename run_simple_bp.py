@@ -23,8 +23,8 @@ def main():
     config_dict = parse_config(config_fname)
     config = prepare_config(config_dict)
 
-    seed, dataset, dataset_type, model_type, device, *all_kwargs = config
-    optim_kwargs, loading_kwargs, dataloader_kwargs = all_kwargs
+    seed, dataset, dataset_type, model_type, device, transforms, *all_kwargs = config
+    transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs = all_kwargs
 
     set_seed(seed)
 
@@ -32,9 +32,6 @@ def main():
     
     if hasattr(model, 'compile'):
         model = model.compile()
-
-    transforms = [zoom_and_resize_ct_and_seg]
-    transform_kwargs = [{'new_size': 360}]
 
     datasets = prepare_datasets(
         dataset,

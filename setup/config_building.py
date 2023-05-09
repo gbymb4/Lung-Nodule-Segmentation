@@ -4,6 +4,7 @@ from typing import Tuple, Callable
 from models.unet import *
 from models.wnet import *
 from projectio import LNSegDataset, LNSegDatasetNodules
+from preprocessing import zoom_and_resize_ct_and_seg
 
 def parse_config(fname: str) -> dict:
     with open(fname, 'r') as file:
@@ -23,6 +24,8 @@ def prepare_config(
 
     if model_name.lower() == 'r2unet':
         model = R2UNet
+    if model_name.lower() == 'unet':
+        model = UNet
     elif model_name.lower() == 'r2wnet':
         model = R2WNet
     else:
@@ -38,4 +41,16 @@ def prepare_config(
     loading_kwargs = config['loading_arguments']
     dataloader_kwargs = config['dataloader_arguments']
 
-    return seed, dataset, dataset_type, model, device, optim_kwargs, loading_kwargs, dataloader_kwargs
+    if 'zoom_transform' in loading_kwargs.keys() and loading_kwargs['zoom_transform']:
+        transforms = [zoom_and_resize_ct_and_seg]
+        transform_kwargs = [{'new_size': 360}]
+    else:
+        transforms = None
+        transform_kwargs = None
+
+    args = (seed, dataset, dataset_type, model, device, transforms)
+    kwargs = (transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs)
+
+    out = (*args, *kwargs)
+
+    return out
