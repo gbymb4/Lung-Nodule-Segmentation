@@ -35,6 +35,7 @@ def main():
 
     datasets = prepare_datasets(
         dataset,
+        dataset_type,
         transforms=transforms,
         transform_kwargs=transform_kwargs,
         load_ct_dims=[0, 1],
