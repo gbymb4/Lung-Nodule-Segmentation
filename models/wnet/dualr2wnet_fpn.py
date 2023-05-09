@@ -68,7 +68,7 @@ class DualR2WNetFE(nn.Module):
     
 
 
-class DualR2UWetFPN(nn.Module):
+class DualR2WNetFPN(nn.Module):
     
     def __init__(self,
         pretrained_config=None, 
