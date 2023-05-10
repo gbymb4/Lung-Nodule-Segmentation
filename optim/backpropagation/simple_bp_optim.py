@@ -119,13 +119,13 @@ class SimpleBPOptimizer:
 
                         train_tp_mask = torch.logical_and(pred_mask, seg_chunk.to(torch.bool))
 
-                        train_tp_pixels += train_tp_mask.view(train_tp_mask.size(0), -1).sum(dim=1).item()
-                        train_gt = seg_chunk.view(seg_chunk.size(0), -1).sum(dim=1).item()
+                        train_tp_pixels += train_tp_mask.reshape(train_tp_mask.size(0), -1).sum(dim=1).item()
+                        train_gt = seg_chunk.reshape(seg_chunk.size(0), -1).sum(dim=1).item()
                         train_gt_pixels += train_gt
 
                         train_fp_mask = torch.logical_or(pred_mask, ~seg_chunk.to(torch.bool))
 
-                        train_fp_pixels += train_fp_mask.view(train_fp_mask.size(0), -1).sum(dim=1).item()
+                        train_fp_pixels += train_fp_mask.reshape(train_fp_mask.size(0), -1).sum(dim=1).item()
                         train_fn_pixels += train_total - train_gt
 
                         chunk_loss = criterion(pred_chunk, seg_chunk)
@@ -187,13 +187,13 @@ class SimpleBPOptimizer:
     
                             valid_tp_mask = torch.logical_and(pred_mask, seg_chunk.to(torch.bool))
     
-                            valid_tp_pixels += valid_tp_mask.view(valid_tp_mask.size(0), -1).sum(dim=1).item()
-                            valid_gt = seg_chunk.view(seg_chunk.size(0), -1).sum(dim=1).item()
+                            valid_tp_pixels += valid_tp_mask.reshape(valid_tp_mask.size(0), -1).sum(dim=1).item()
+                            valid_gt = seg_chunk.reshape(seg_chunk.size(0), -1).sum(dim=1).item()
                             valid_gt_pixels += valid_gt
     
                             valid_fp_mask = torch.logical_or(pred_mask, ~seg_chunk.to(torch.bool))
     
-                            valid_fp_pixels += valid_fp_mask.view(valid_fp_mask.size(0), -1).sum(dim=1).item()
+                            valid_fp_pixels += valid_fp_mask.reshape(valid_fp_mask.size(0), -1).sum(dim=1).item()
                             valid_fn_pixels += valid_total - valid_gt
     
                             chunk_loss = criterion(pred_chunk, seg_chunk)
