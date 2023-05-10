@@ -38,14 +38,16 @@ class SimpleBPOptimizer:
 
         for batch in self.train_loader:
             _, ys = batch
-            ys = ys.cpu().detach().numpy()
-
-            positive = ys.sum()
-            total = np.array(ys.shape).prod()
-            negative = total - positive
-
-            positive_voxels += positive
-            negative_voxels += negative
+            
+            for y in ys:
+                y = y.cpu().detach().numpy()
+    
+                positive = y.sum()
+                total = np.array(y.shape).prod()
+                negative = total - positive
+    
+                positive_voxels += positive
+                negative_voxels += negative
 
         return negative_voxels / positive_voxels
 
