@@ -393,7 +393,7 @@ class LNSegDatasetNodules(LNSegDataset):
         self.xs, self.ys = [], []
         
         for instance_dir in instance_dirs:
-            x_splits, y_splits = self.load_instance(instance_dir)
+            x_splits, y_splits = self.load_instance(instance_dir, *args)
 
             for x_split, y_split in zip(x_splits, y_splits):
                 self.xs.append(x_split)
