@@ -18,7 +18,8 @@ def plot_and_save_gif(
     images: np.ndarray,
     fname: str,
     titles: List[str]=None,
-    verbose: bool=False
+    verbose: bool=False,
+    fps: int=10
 ) -> None:
     
     fig_handles = []
@@ -37,7 +38,7 @@ def plot_and_save_gif(
         
         fig_handles.append(fig)
 
-    with imageio.get_writer(fname, mode='I', fps=10) as writer:
+    with imageio.get_writer(fname, mode='I', fps=fps) as writer:
         for i, fig in enumerate(fig_handles):
             
             if verbose and i % 10 == 0: print(f'Rendering frame {i + 1}...')
@@ -83,6 +84,7 @@ def save_instance(
 def save_history_dict_and_model(
     dataset: str,
     model: nn.Module,
+    id: int,
     config: dict,
     train_idx: int,
     history: dict
@@ -98,7 +100,7 @@ def save_history_dict_and_model(
     save_parent_dir = f'{save_root_dir}/{model_name}'
     if not os.path.isdir(save_parent_dir): os.mkdir(save_parent_dir)
 
-    save_dir = f'{save_parent_dir}/{train_idx}_{time.time()}'
+    save_dir = f'{save_parent_dir}/{train_idx}_{id}'
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     with open(f'{save_dir}/history.json', 'w') as file:

@@ -1,13 +1,13 @@
-import torch, random, warnings, sys
+import torch, random, warnings, sys, time
 
 import numpy as np
 
 from models.unet import *
 from models.wnet import *
 from setup import parse_config, prepare_config
-from projectio import prepare_datasets, prepare_dataloaders, save_history_dict_and_model
-from preprocessing import zoom_and_resize_ct_and_seg
+from projectio import prepare_datasets, prepare_dataloaders, save_history_dict_and_model, plot_and_save_gif
 from optim.backpropagation import SimpleBPOptimizer
+from pconfig import OUT_DIR
 
 def set_seed(seed):
     random.seed(seed)
@@ -47,12 +47,55 @@ def main():
     optim = SimpleBPOptimizer(model, train_loader, valid_loader, device=device)
     history = optim.execute(**optim_kwargs)
 
+    model.eval()
+
+    valid_instance_example = next(iter(valid_loader))[0]
+    x, y = valid_instance_example
+
+    pred_y_raw = model(x)
+    pred_y = pred_y_raw > 0.5
+
     print('-'*32)
     print('saving training history and model...', end='')
 
     train_idx = dataloader_kwargs['train_idx']
 
-    save_history_dict_and_model(dataset, model, config_dict, train_idx, history)
+    id = int(time.time())
+
+    save_history_dict_and_model(dataset, model, id, config_dict, train_idx, history)
+
+    gif_name = f'{OUT_DIR}/{dataset}/{type(model).__name__}/{train_idx}_{id}/example_preds.gif'
+
+    x = x.detach().float().cpu().numpy()
+    x = x.swapaxes(0, 1)
+    x = x.swapaxes(1, 3)
+
+    y = y.detach().float().cpu().numpy()
+    y = y.swapaxes(0, 1)
+    y = y.swapaxes(1, 3)
+
+    pred_y_raw = pred_y_raw.float().detach().cpu().numpy()
+    pred_y_raw = pred_y_raw.swapaxes(0, 1)
+    pred_y_raw = pred_y_raw.swapaxes(1, 3)
+
+    pred_y = pred_y.float().detach().cpu().numpy()
+    pred_y = pred_y.swapaxes(0, 1)
+    pred_y = pred_y.swapaxes(1, 3)
+
+    to_plot = np.array([
+        x[:, :, :, 0],
+        y,
+        pred_y_raw,
+        pred_y
+    ], dtype=float)
+    to_plot = to_plot.swapaxes(0, 1)
+
+    titles = ['Input', 'GT', 'Raw Output', 'Prediction']
+
+    print('preparing example prediction gif...')
+    print('-'*32)
+
+    plot_and_save_gif(to_plot, gif_name, titles, verbose=True, fps=3)
 
     print('done')
     print('all done!')
