@@ -257,39 +257,14 @@ class LNSegDataset(Dataset):
             raise ValueError(f"invalid value for arg 'dataset': {dataset}")
         
         instance_dirs = [f'{data_dir}/{instance_id}' for instance_id in os.listdir(data_dir)]
-        
-        def load_instance(instance_dir: str) -> Tuple[torch.Tensor, torch.Tensor]:
-            x = np.load(f'{instance_dir}/X.npy')
-            y = np.load(f'{instance_dir}/y.npy')
-
-            x = x.swapaxes(1, 3)
-            x = x.swapaxes(0, 1)
-
-            y = y[:, :, :, np.newaxis].swapaxes(1, 3)
-            y = y.swapaxes(0, 1)
-
-            if load_ct_dims is not None:
-                x = x[np.array(load_ct_dims), :, :, :]
-
-            if transforms is not None:
-                for transform, kwargs in zip(transforms, transform_kwargs):
-                    x, y = transform(x, y, **kwargs)
-            
-            x = torch.from_numpy(x).type(torch.float16)
-            x = x.to(device)
-            
-            y = torch.from_numpy(y).type(torch.int8)
-            y = y.to(device)
-            
-            return x, y
-        
-        self.xs, self.ys = [], []
-        
-        for instance_dir in instance_dirs:
-            x, y = load_instance(instance_dir)
-            
-            self.xs.append(x)
-            self.ys.append(y)
+     
+        self.load_all(
+            instance_dirs, 
+            load_ct_dims, 
+            transforms, 
+            transform_kwargs, 
+            device
+        )   
      
      
      
@@ -306,93 +281,119 @@ class LNSegDataset(Dataset):
         ys = self.ys[idx]
         
         return xs, ys
+    
+    
+    
+    def load_instance(
+        self,
+        instance_dir: str,
+        load_ct_dims: Iterable[int],
+        transforms: Iterable[Callable],
+        transform_kwargs: Iterable[dict],
+        device: str
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        
+        x = np.load(f'{instance_dir}/X.npy')
+        y = np.load(f'{instance_dir}/y.npy')
+
+        x = x.swapaxes(1, 3)
+        x = x.swapaxes(0, 1)
+
+        y = y[:, :, :, np.newaxis].swapaxes(1, 3)
+        y = y.swapaxes(0, 1)
+
+        if load_ct_dims is not None:
+            x = x[np.array(load_ct_dims), :, :, :]
+
+        if transforms is not None:
+            for transform, kwargs in zip(transforms, transform_kwargs):
+                x, y = transform(x, y, **kwargs)
+        
+        x = torch.from_numpy(x).type(torch.float16)
+        x = x.to(device)
+        
+        y = torch.from_numpy(y).type(torch.int8)
+        y = y.to(device)
+        
+        return x, y
+    
+    
+    
+    def load_all(self, instance_dirs: Iterable[str], *args) -> None:
+        self.xs, self.ys = [], []
+        
+        for instance_dir in instance_dirs:
+            x, y = self.load_instance(instance_dir, *args)
+            
+            self.xs.append(x)
+            self.ys.append(y)
 
 
 
 class LNSegDatasetNodules(LNSegDataset):
+            
+    def load_instance(
+        self,
+        instance_dir: str,
+        load_ct_dims: Iterable[int],
+        transforms: Iterable[Callable],
+        transform_kwargs: Iterable[dict],
+        device: str
+    ) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+        
+        x = np.load(f'{instance_dir}/X.npy')
+        y = np.load(f'{instance_dir}/y.npy')
 
-    def __init__(
-            self,
-            dataset: str,
-            subset: int,
-            load_ct_dims: Union[List[int], None] = None,
-            load_limit: Union[int, None] = None,
-            device: str = 'cpu',
-            transforms: Union[Iterable[Callable], None] = None,
-            transform_kwargs: Union[Iterable[dict], None] = None
-    ) -> None:
-        super().__init__(
-            dataset,
-            subset,
-            load_ct_dims,
-            load_limit,
-            device,
-            transforms,
-            transform_kwargs
-        )
+        x = x.swapaxes(1, 3)
+        x = x.swapaxes(0, 1)
 
-        assert load_limit is None or load_limit > 0
+        y = y[:, :, :, np.newaxis].swapaxes(1, 3)
+        y = y.swapaxes(0, 1)
 
-        if dataset.lower() == 'luna16':
-            data_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/subset{subset}'
-        elif dataset.lower() == 'nsclc':
-            data_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/subset{subset}'
-        else:
-            raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+        if load_ct_dims is not None:
+            x = x[np.array(load_ct_dims), :, :, :]
 
-        instance_dirs = [f'{data_dir}/{instance_id}' for instance_id in os.listdir(data_dir)]
+        filter_idxs = y.reshape(y.shape[1], -1).sum(axis=1) > 0
+        dilated_idxs = np.convolve(filter_idxs, np.array([1, 1]), mode='same')
+        filter_idxs[dilated_idxs > 0] = 1
 
-        def load_instance(instance_dir: str) -> Tuple[torch.Tensor, torch.Tensor]:
-            x = np.load(f'{instance_dir}/X.npy')
-            y = np.load(f'{instance_dir}/y.npy')
+        start_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == 1)
+        end_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == -1)
 
-            x = x.swapaxes(1, 3)
-            x = x.swapaxes(0, 1)
+        filter_idx_regions = [np.zeros_like(filter_idxs) for _ in range(len(start_idx))]
 
-            y = y[:, :, :, np.newaxis].swapaxes(1, 3)
-            y = y.swapaxes(0, 1)
+        for i, (start, end) in enumerate(zip(start_idx, end_idx)):
+            filter_idx_regions[i][start:end + 1] = filter_idxs[start:end + 1]
 
-            if load_ct_dims is not None:
-                x = x[np.array(load_ct_dims), :, :, :]
+        x_splits, y_splits = [], []
 
-            filter_idxs = y.reshape(y.shape[1], -1).sum(axis=1) > 0
-            dilated_idxs = np.convolve(filter_idxs, np.array([1, 1]), mode='same')
-            filter_idxs[dilated_idxs > 0] = 1
+        for i, region_idxs in enumerate(filter_idx_regions):
+            x_splits.append(x[:, region_idxs, :, :])
+            y_splits.append(y[:, region_idxs, :, :])
 
-            start_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == 1)
-            end_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == -1)
+        for i, (x_split, y_split) in enumerate(zip(x_splits, y_splits)):
+            if transforms is not None:
+                for transform, kwargs in zip(transforms, transform_kwargs):
+                    x_split, y_split = transform(x_split, y_split, **kwargs)
 
-            filter_idx_regions = [np.zeros_like(filter_idxs) for _ in range(len(start_idx))]
+            x_split = torch.from_numpy(x_split).type(torch.float16)
+            x_split = x_split.to(device)
 
-            for i, (start, end) in enumerate(zip(start_idx, end_idx)):
-                filter_idx_regions[i][start:end + 1] = filter_idxs[start:end + 1]
+            y_split = torch.from_numpy(y_split).type(torch.int8)
+            y_split = y_split.to(device)
 
-            x_splits, y_splits = [], []
+            x_splits[i] = x_split
+            y_splits[i] = y_split
 
-            for i, region_idxs in enumerate(filter_idx_regions):
-                x_splits.append(x[:, region_idxs, :, :])
-                y_splits.append(y[:, region_idxs, :, :])
+        return x_splits, y_splits
 
-            for i, (x_split, y_split) in enumerate(zip(x_splits, y_splits)):
-                if transforms is not None:
-                    for transform, kwargs in zip(transforms, transform_kwargs):
-                        x_split, y_split = transform(x_split, y_split, **kwargs)
+        
 
-                x_split = torch.from_numpy(x_split).type(torch.float16)
-                x_split = x_split.to(device)
-
-                y_split = torch.from_numpy(y_split).type(torch.int8)
-                y_split = y_split.to(device)
-
-                x_splits[i] = x_split
-                y_splits[i] = y_split
-
-            return x_splits, y_splits
-
+    def load_all(self, instance_dirs: Iterable[str], *args) -> None:
         self.xs, self.ys = [], []
-
+        
         for instance_dir in instance_dirs:
-            x_splits, y_splits = load_instance(instance_dir)
+            x_splits, y_splits = self.load_instance(instance_dir, *args)
 
             for x_split, y_split in zip(x_splits, y_splits):
                 self.xs.append(x_split)
