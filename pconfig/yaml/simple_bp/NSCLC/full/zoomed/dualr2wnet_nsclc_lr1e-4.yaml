@@ -1,0 +1,15 @@
+seed: 0
+dataset: NSCLC
+dataset_type: nodules
+model: DualR2WNet
+device: cuda
+optimizer_arguments:
+  epochs: 100
+  lr: 0.0001
+  cum_batch_size: 5
+  valid_freq: 10
+loading_arguments:
+  num_workers: 5
+dataloader_arguments:
+  batch_size: 8
+  train_idx: 0
