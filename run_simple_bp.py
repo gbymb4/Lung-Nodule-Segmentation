@@ -49,7 +49,7 @@ def main():
 
     model.eval()
 
-    valid_instance_example = next(iter(valid_loader))[0]
+    valid_instance_example = next(iter(valid_loader))
     x, y = valid_instance_example
 
     pred_y_raw = model(x)

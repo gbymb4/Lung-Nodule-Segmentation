@@ -23,3 +23,18 @@ class WeightedBCELoss:
         loss = (-1 / pred.shape[0]) * loss_temp
 
         return loss
+
+
+
+class BinaryDiceLoss:
+
+    def __call__(self, predicted, target):
+        predicted = predicted.view(-1)
+        target = target.view(-1)
+
+        intersection = (predicted * target).sum()
+        dice_coefficient = (2.0 * intersection) / (predicted.sum() + target.sum())
+
+        dice_loss = 1.0 - dice_coefficient
+
+        return dice_loss

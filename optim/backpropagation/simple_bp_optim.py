@@ -12,7 +12,7 @@ import numpy as np
 from torch import nn
 from torch.utils.data import DataLoader
 from typing import List
-from optim import WeightedBCELoss
+from optim import WeightedBCELoss, BinaryDiceLoss
 
 class SimpleBPOptimizer:
     
@@ -29,6 +29,9 @@ class SimpleBPOptimizer:
         self.valid_loader = valid
         self.device = device
         self.positive_weight = self.__compute_positive_weight()
+
+        self.train_slides = sum([x.size()[1] for x, _ in self.train_loader])
+        self.valid_slides = sum([x.size()[1] for x, _ in self.valid_loader])
 
 
 
@@ -60,6 +63,8 @@ class SimpleBPOptimizer:
 
         optim = torch.optim.Adam(self.model.parameters(), lr=lr)
         criterion = WeightedBCELoss(self.positive_weight)
+
+        compute_dice = BinaryDiceLoss()
         
         print('#'*32)
         print('beginning BP training loop...')
@@ -81,6 +86,7 @@ class SimpleBPOptimizer:
             train_gt_pixels = 0
             train_fp_pixels = 0
             train_fn_pixels = 0
+            train_cum_dice = 0
             
             model = self.model.train()
 
@@ -134,6 +140,11 @@ class SimpleBPOptimizer:
                         train_num_slides += len(ct_chunk)
                         train_loss += chunk_loss.item()
 
+                        dice = compute_dice(pred_chunk, seg_chunk).item()
+                        norm_dice = dice * (seg_chunk.size()[1] / self.train_slides)
+
+                        train_cum_dice += norm_dice
+
                 optim.step()
             
             history_record['train_loss'] = train_loss
@@ -141,6 +152,7 @@ class SimpleBPOptimizer:
             history_record['train_acc'] = train_correct_pixels / train_total_pixels
             history_record['train_tpr'] = train_tp_pixels / train_gt_pixels
             history_record['train_fpr'] = train_fp_pixels / train_fn_pixels
+            history_record['train_dice'] = train_cum_dice
 
             if i % valid_freq == 0:
                 valid_num_slides = 0
@@ -151,6 +163,7 @@ class SimpleBPOptimizer:
                 valid_gt_pixels = 0
                 valid_fp_pixels = 0
                 valid_fn_pixels = 0
+                valid_cum_dice = 0
     
                 model = self.model.eval()
     
@@ -200,12 +213,18 @@ class SimpleBPOptimizer:
                                 
                             valid_num_slides += len(ct_chunk)
                             valid_loss += chunk_loss.item()
+
+                            dice = compute_dice(pred_chunk, seg_chunk).item()
+                            norm_dice = dice * (seg_chunk.size()[1] / self.valid_slides)
+
+                            valid_cum_dice += norm_dice
                                 
                 history_record['valid_loss'] = valid_loss
                 history_record['valid_norm_loss'] = valid_loss / valid_num_slides
                 history_record['valid_acc'] = valid_correct_pixels / valid_total_pixels
                 history_record['valid_tpr'] = valid_tp_pixels / valid_gt_pixels
                 history_record['valid_fpr'] = valid_fp_pixels / valid_fn_pixels
+                history_record['valid_dice'] = valid_cum_dice
 
             history.append(history_record)
 
