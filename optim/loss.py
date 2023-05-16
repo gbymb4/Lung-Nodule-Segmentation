@@ -29,8 +29,8 @@ class WeightedBCELoss:
 class BinaryDiceLoss:
 
     def __call__(self, predicted, target):
-        predicted = predicted.view(-1)
-        target = target.view(-1)
+        predicted = predicted.reshape(-1)
+        target = target.reshape(-1)
 
         intersection = (predicted * target).sum()
         dice_coefficient = (2.0 * intersection) / (predicted.sum() + target.sum())
