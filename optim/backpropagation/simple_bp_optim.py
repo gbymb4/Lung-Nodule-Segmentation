@@ -30,8 +30,8 @@ class SimpleBPOptimizer:
         self.device = device
         self.positive_weight = self.__compute_positive_weight()
 
-        self.train_slides = sum([sum(x.size()[1] for x in x_batch) for x_batch, _ in self.train_loader])
-        self.valid_slides = sum([sum(x.size()[1] for x in x_batch) for x_batch, _ in self.valid_loader])
+        self.train_slides = sum([sum([x.size()[1] for x in x_batch]) for x_batch, _ in self.train_loader])
+        self.valid_slides = sum([sum([x.size()[1] for x in x_batch]) for x_batch, _ in self.valid_loader])
 
 
 
