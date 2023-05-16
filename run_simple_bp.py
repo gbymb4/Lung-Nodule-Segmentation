@@ -47,11 +47,14 @@ def main():
     optim = SimpleBPOptimizer(model, train_loader, valid_loader, device=device)
     history = optim.execute(**optim_kwargs)
 
-    model.eval()
+    model = model.eval()
 
     valid_instance_example = next(iter(valid_loader))
     x, y = valid_instance_example
     x, y = x[0], y[0]
+    
+    x = x.unsqueeze(dim=0).float().to(device)
+    y = y.unsqueeze(dim=0).float().to(device)
 
     pred_y_raw = model(x)
     pred_y = pred_y_raw > 0.5
