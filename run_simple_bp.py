@@ -51,6 +51,7 @@ def main():
 
     valid_instance_example = next(iter(valid_loader))
     x, y = valid_instance_example
+    x, y = x[0], y[0]
 
     pred_y_raw = model(x)
     pred_y = pred_y_raw > 0.5
