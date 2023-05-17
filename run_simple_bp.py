@@ -68,21 +68,21 @@ def main():
 
     save_history_dict_and_model(dataset, model, id, config_dict, train_idx, history)
 
-    gif_name = f'{OUT_DIR}/{dataset}/{type(model).__name__}/{train_idx}_{id}/example_preds.gif'
+    gif_name = f'{OUT_DIR}/{dataset.lower()}/{type(model).__name__}/{train_idx}_{id}/example_preds.gif'
 
-    x = x.detach().float().cpu().numpy()
+    x = x[0].detach().float().cpu().numpy()
     x = x.swapaxes(0, 1)
     x = x.swapaxes(1, 3)
 
-    y = y.detach().float().cpu().numpy()
+    y = y[0].detach().float().cpu().numpy()
     y = y.swapaxes(0, 1)
     y = y.swapaxes(1, 3)
 
-    pred_y_raw = pred_y_raw.float().detach().cpu().numpy()
+    pred_y_raw = pred_y_raw[0].float().detach().cpu().numpy()
     pred_y_raw = pred_y_raw.swapaxes(0, 1)
     pred_y_raw = pred_y_raw.swapaxes(1, 3)
 
-    pred_y = pred_y.float().detach().cpu().numpy()
+    pred_y = pred_y[0].float().detach().cpu().numpy()
     pred_y = pred_y.swapaxes(0, 1)
     pred_y = pred_y.swapaxes(1, 3)
 
