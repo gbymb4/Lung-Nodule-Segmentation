@@ -87,7 +87,7 @@ def main():
     pred_y = pred_y.swapaxes(1, 3)
 
     to_plot = np.array([
-        x[:, :, :, 0],
+        x[:, :, :, :1],
         y,
         pred_y_raw,
         pred_y
