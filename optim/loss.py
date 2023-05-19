@@ -4,8 +4,9 @@ from torch import nn
 
 class WeightedBCELoss:
 
-    def __init__(self, positive_weight):
+    def __init__(self, positive_weight, epsilon=1e-4):
         self.weight = positive_weight
+        self.epsilon = epsilon
 
 
 
@@ -14,8 +15,8 @@ class WeightedBCELoss:
             pred = pred.unsqueeze(dim=0)
             true = true.unsqueeze(dim=0)
 
-        positive = self.weight * true * torch.log(pred)
-        negative = (1 - true) * torch.log(1 - pred)
+        positive = self.weight * true * torch.log(pred + self.epsilon)
+        negative = (1 - true) * torch.log(1 - pred + self.epsilon)
 
         total = positive + negative
 
