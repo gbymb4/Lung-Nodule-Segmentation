@@ -353,7 +353,7 @@ class LNSegDatasetNodules(LNSegDataset):
         if load_ct_dims is not None:
             x = x[np.array(load_ct_dims), :, :, :]
 
-        filter_idxs = y[0].reshape(y.shape[0], -1).sum(axis=1) > 0
+        filter_idxs = y.reshape(y.shape[1], -1).sum(axis=1) > 0
         dilated_idxs = np.convolve(filter_idxs, np.array([1, 1]), mode='same')
         filter_idxs[dilated_idxs > 0] = 1
 
