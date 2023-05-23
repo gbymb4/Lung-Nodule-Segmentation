@@ -353,23 +353,17 @@ class LNSegDatasetNodules(LNSegDataset):
         if load_ct_dims is not None:
             x = x[np.array(load_ct_dims), :, :, :]
 
-        filter_idxs = y.reshape(y.shape[1], -1).sum(axis=1) > 0
+        filter_idxs = y[0].reshape(y.shape[0], -1).sum(axis=1) > 0
         dilated_idxs = np.convolve(filter_idxs, np.array([1, 1]), mode='same')
         filter_idxs[dilated_idxs > 0] = 1
 
-        start_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == 1)
-        end_idx, = np.where(np.diff(np.concatenate(([0], filter_idxs, [0]))) == -1)
-
-        filter_idx_regions = [np.zeros_like(filter_idxs) for _ in range(len(start_idx))]
-
-        for i, (start, end) in enumerate(zip(start_idx, end_idx)):
-            filter_idx_regions[i][start:end + 1] = filter_idxs[start:end + 1]
+        filter_idx_regions = self.__split_connected_regions(filter_idxs)
 
         x_splits, y_splits = [], []
 
         for i, region_idxs in enumerate(filter_idx_regions):
-            x_splits.append(x[:, region_idxs, :, :])
-            y_splits.append(y[:, region_idxs, :, :])
+            x_splits.append(x[:, np.array(region_idxs), :, :])
+            y_splits.append(y[:, np.array(region_idxs), :, :])
 
         for i, (x_split, y_split) in enumerate(zip(x_splits, y_splits)):
             if transforms is not None:
@@ -398,6 +392,26 @@ class LNSegDatasetNodules(LNSegDataset):
             for x_split, y_split in zip(x_splits, y_splits):
                 self.xs.append(x_split)
                 self.ys.append(y_split)
+
+
+
+    def __split_connected_regions(self, arr):
+        indices = np.where(arr)[0]
+        regions = []
+        region = []
+        prev_index = None
+
+        for index in indices:
+            if prev_index is None or index == prev_index + 1:
+                region.append(index)
+            else:
+                regions.append(region)
+                region = [index]
+            prev_index = index
+
+        if region: regions.append(region)
+
+        return regions
     
 
 
