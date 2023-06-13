@@ -484,7 +484,7 @@ def prepare_dataset(inputs):
 
 
 
-def prepare_datasets(dataset, dataset_type, num_workers=1, **kwargs):
+def prepare_datasets(dataset, dataset_type, partition, num_workers=1, **kwargs):
     assert num_workers > 0
 
     if dataset.lower() == 'luna16':
@@ -497,9 +497,9 @@ def prepare_datasets(dataset, dataset_type, num_workers=1, **kwargs):
     subsets_count = len([subset_dir for subset_dir in os.listdir(data_dir) if subset_dir[:6] == 'subset'])
 
     if num_workers == 1:
-        datasets = [prepare_dataset(dataset_type, dataset, i, **kwargs) for i in range(subsets_count)]
+        datasets = [prepare_dataset(dataset_type, dataset, partition, i, **kwargs) for i in range(subsets_count)]
     else:
-        all_args = [(dataset_type, dataset, i) for i in range(subsets_count)]
+        all_args = [(dataset_type, dataset, partition, i) for i in range(subsets_count)]
         all_kwargs = [kwargs for _ in range(subsets_count)]
         pool_arguments = list(zip(all_args, all_kwargs))
 

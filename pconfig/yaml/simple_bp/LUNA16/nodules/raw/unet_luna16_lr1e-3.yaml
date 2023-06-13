@@ -12,7 +12,7 @@ optimizer_arguments:
   cum_batch_size: 20
   valid_freq: 1
 loading_arguments:
-  num_workers: 10
+  num_workers: 8
 dataloader_arguments:
   batch_size: 8
   train_idx: 0
