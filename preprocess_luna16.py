@@ -147,6 +147,7 @@ def main():
         
         if len(imgs) != len(lung_segs):
             imgs = imgs[len(imgs) - len(lung_segs) - 1:-1]
+            nodules_segs = nodules_segs[len(imgs) - len(lung_segs) - 1:-1]
         
         imgs[~lung_segs] = 0
         
