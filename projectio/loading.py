@@ -493,9 +493,14 @@ def prepare_datasets(dataset, dataset_type, partition, num_workers=1, **kwargs):
         data_dir = NSCLC_PREPROCESSED_DATA_DIR
     else:
         raise ValueError(f"invalid value for arg 'dataset': {dataset}")
-        
-    subsets_count = len([subset_dir for subset_dir in os.listdir(data_dir) if subset_dir[:6] == 'subset'])
-
+    
+    if partition == 'train':
+        subsets_count = len([subset_dir for subset_dir in os.listdir(f'{data_dir}/train') if subset_dir[:6] == 'subset'])
+    elif partition == 'test':
+        subsets_count = 1
+    else:
+        raise ValueError(f"invalid value for arg 'partition': {partition}")
+    
     if num_workers == 1:
         datasets = [prepare_dataset(dataset_type, dataset, partition, i, **kwargs) for i in range(subsets_count)]
     else:
