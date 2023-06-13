@@ -4,6 +4,8 @@ dataset_type: nodules
 model: UNet
 device: cuda
 zoom_transform: false
+train: true
+test: false
 optimizer_arguments:
   epochs: 100
   lr: 0.01

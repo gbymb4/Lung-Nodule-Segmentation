@@ -37,6 +37,8 @@ def prepare_config(
         dataset_type = LNSegDatasetNodules
 
     device = config['device']
+    train = config['train']
+    test = config['test']
     optim_kwargs = config['optimizer_arguments']
     loading_kwargs = config['loading_arguments']
     dataloader_kwargs = config['dataloader_arguments']
@@ -48,7 +50,7 @@ def prepare_config(
         transforms = None
         transform_kwargs = None
 
-    args = (seed, dataset, dataset_type, model, device, transforms)
+    args = (seed, dataset, dataset_type, model, device, transforms, train, test)
     kwargs = (transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs)
 
     out = (*args, *kwargs)

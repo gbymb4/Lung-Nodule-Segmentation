@@ -53,14 +53,14 @@ def cv8uc1_to_float64(array: np.ndarray) -> np.ndarray:
 
 
 
-def float64_to_float16(array: np.ndarray) -> np.ndarray:
-    convert = array.astype(np.float16)
+def float64_to_float32(array: np.ndarray) -> np.ndarray:
+    convert = array.astype(np.float32)
     
     return convert
 
 
 
-def float16_to_float64(array: np.ndarray) -> np.ndarray:
+def float32_to_float64(array: np.ndarray) -> np.ndarray:
     convert = array.astype(np.float64)
     
     return convert

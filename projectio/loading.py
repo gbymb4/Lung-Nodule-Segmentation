@@ -23,7 +23,8 @@ from pconfig import (
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
 from typing import Union, Iterable, Callable, Tuple, List
 from multiprocessing import Pool
-from operator import itemgetter
+from pylidc.utils import consensus
+from skimage.measure import find_contours
 
 def luna16_ct_fnames(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     assert load_limit is None or load_limit > 0
@@ -69,6 +70,18 @@ def luna16_seg_subset_sids(subset: int, load_limit: Union[int, None]=None) -> np
 
 
 
+def luna16_seg_sids(load_limit: Union[int, None]=None) -> np.ndarray:
+    assert load_limit is None or load_limit > 0
+    
+    data_dir = f'{LUNA16_RAW_DATA_DIR}/lungs'
+    
+    all_headers = list(filter(lambda x: x[-4:] == '.mhd', os.listdir(data_dir)))
+    sids = np.array([header[:-4] for header in all_headers], dtype=object)
+    
+    return sids
+
+
+
 def load_luna16_segs(subset: int, load_limit: Union[int, None]=None) -> np.ndarray:
     subset_sids = luna16_seg_subset_sids()
     
@@ -80,6 +93,40 @@ def load_luna16_segs(subset: int, load_limit: Union[int, None]=None) -> np.ndarr
     segs = load_luna16_seg_vec(subset_sids)
 
     return segs
+
+
+
+def load_luna16_censensus_contours(scan: pl.Scan) -> List[List[Tuple[int, np.ndarray]]]:
+    clusters = scan.cluster_annotations()
+    
+    consensus_contours = []
+    
+    for j, cluster in enumerate(clusters):
+        cmask, cbbox, masks = consensus(cluster)
+        
+        start = cbbox[2].start
+        stop = cbbox[2].stop
+        
+        bbox_origin_x = cbbox[1].start
+        bbox_origin_y = cbbox[0].start
+        
+        contours = []
+        
+        for i in range(stop - start - 1):
+            nodule_contours = find_contours(cmask[:, :, i].astype(float), 0.5)
+            
+            for contour_region in nodule_contours:
+                contour_region[:, [0, 1]] = contour_region[:, [1, 0]]
+                
+                contour_region[:, 0] += bbox_origin_x
+                contour_region[:, 1] += bbox_origin_y
+            
+                contours.append((start + i, contour_region))
+            
+        consensus_contours.append(contours)
+        
+    return consensus_contours
+    
 
 
 
@@ -238,6 +285,7 @@ class LNSegDataset(Dataset):
     def __init__(
         self,
         dataset: str,
+        partition: str,
         subset: int,
         load_ct_dims: Union[List[int], None]=None,
         load_limit: Union[int, None]=None, 
@@ -249,17 +297,31 @@ class LNSegDataset(Dataset):
         
         assert load_limit is None or load_limit > 0
         
-        if dataset.lower() == 'luna16':
-            data_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/subset{subset}'
-        elif dataset.lower() == 'nsclc':
-            data_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/subset{subset}'
-        else:
-            raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+        if partition == 'train':
         
-        instance_dirs = [f'{data_dir}/{instance_id}' for instance_id in os.listdir(data_dir)]
+            if dataset.lower() == 'luna16':
+                data_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/train/subset{subset}'
+            elif dataset.lower() == 'nsclc':
+                data_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/train/subset{subset}'
+            else:
+                raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+                
+        elif partition == 'test':
+            
+            if dataset.lower() == 'luna16':
+                data_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/test'
+            elif dataset.lower() == 'nsclc':
+                data_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/test'
+            else:
+                raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+            
+        else:
+            raise ValueError(f"invalid value for arg 'partition': {partition}")
+                
+        scan_fnames = [f'{data_dir}/{scan_fname}' for scan_fname in os.listdir(data_dir)]
      
         self.load_all(
-            instance_dirs, 
+            scan_fnames, 
             load_ct_dims, 
             transforms, 
             transform_kwargs, 
@@ -286,15 +348,16 @@ class LNSegDataset(Dataset):
     
     def load_instance(
         self,
-        instance_dir: str,
+        scan_fname: str,
         load_ct_dims: Iterable[int],
         transforms: Iterable[Callable],
         transform_kwargs: Iterable[dict],
         device: str
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         
-        x = np.load(f'{instance_dir}/X.npy')
-        y = np.load(f'{instance_dir}/y.npy')
+        data = np.load(scan_fname)
+        
+        x, y = data['x'], data['y']
 
         x = x.swapaxes(1, 3)
         x = x.swapaxes(0, 1)
@@ -319,11 +382,11 @@ class LNSegDataset(Dataset):
     
     
     
-    def load_all(self, instance_dirs: Iterable[str], *args) -> None:
+    def load_all(self, scan_fnames: Iterable[str], *args) -> None:
         self.xs, self.ys = [], []
         
-        for instance_dir in instance_dirs:
-            x, y = self.load_instance(instance_dir, *args)
+        for scan_fname in scan_fnames:
+            x, y = self.load_instance(scan_fname, *args)
             
             self.xs.append(x)
             self.ys.append(y)
@@ -334,15 +397,16 @@ class LNSegDatasetNodules(LNSegDataset):
             
     def load_instance(
         self,
-        instance_dir: str,
+        scan_fname: str,
         load_ct_dims: Iterable[int],
         transforms: Iterable[Callable],
         transform_kwargs: Iterable[dict],
         device: str
     ) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         
-        x = np.load(f'{instance_dir}/X.npy')
-        y = np.load(f'{instance_dir}/y.npy')
+        data = np.load(scan_fname)
+        
+        x, y = data['x'], data['y']
 
         x = x.swapaxes(1, 3)
         x = x.swapaxes(0, 1)
@@ -383,11 +447,11 @@ class LNSegDatasetNodules(LNSegDataset):
 
         
 
-    def load_all(self, instance_dirs: Iterable[str], *args) -> None:
+    def load_all(self, scan_fnames: Iterable[str], *args) -> None:
         self.xs, self.ys = [], []
         
-        for instance_dir in instance_dirs:
-            x_splits, y_splits = self.load_instance(instance_dir, *args)
+        for scan_fname in scan_fnames:
+            x_splits, y_splits = self.load_instance(scan_fname, *args)
 
             for x_split, y_split in zip(x_splits, y_splits):
                 self.xs.append(x_split)

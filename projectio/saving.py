@@ -57,27 +57,44 @@ def plot_and_save_gif(
 
 def save_instance(
     dataset: str,
+    partition: str,
     subset: int,
     idx: int,
     xs: np.ndarray,
     ys: np.ndarray
 ) -> None:
+
+    if partition == 'train':
     
-    if dataset.lower() == 'nsclc':
-        save_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/subset{subset}'
-    elif dataset.lower() == 'luna16':
-        save_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/subset{subset}'
-    else:
-        raise ValueError(f'dataset "{dataset}" does not exist')
+        if dataset.lower() == 'nsclc':
+            if not os.path.isdir(f'{NSCLC_PREPROCESSED_DATA_DIR}/train'): 
+                os.mkdir(f'{NSCLC_PREPROCESSED_DATA_DIR}/train')
+                
+            save_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/train/subset{subset}'
+            
+        elif dataset.lower() == 'luna16':
+            if not os.path.isdir(f'{LUNA16_PREPROCESSED_DATA_DIR}/train'): 
+                os.mkdir(f'{LUNA16_PREPROCESSED_DATA_DIR}/train')
+                
+            save_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/train/subset{subset}'
+        else:
+            raise ValueError(f'dataset "{dataset}" does not exist')  
+    
+    elif partition == 'test':
         
+        if dataset.lower() == 'nsclc':
+            save_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/test'
+        elif dataset.lower() == 'luna16':
+            save_dir = f'{LUNA16_PREPROCESSED_DATA_DIR}/test'
+        else:
+            raise ValueError(f'dataset "{dataset}" does not exist')
+    
+    else:
+        raise ValueError(f'partition "{partition}" does not exist')
+    
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     
-    instance_dir = f'{save_dir}/{idx}'
-    
-    if not os.path.isdir(instance_dir): os.mkdir(instance_dir)
-    
-    np.save(f'{instance_dir}/X.npy', xs)
-    np.save(f'{instance_dir}/y.npy', ys)
+    np.savez_compressed(f'{save_dir}/scan_{idx}.npz', x=xs, y=ys)
 
 
 
