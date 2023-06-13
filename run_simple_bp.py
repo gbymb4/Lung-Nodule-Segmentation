@@ -37,13 +37,14 @@ def main():
         datasets = prepare_datasets(
             dataset,
             dataset_type,
+            'train',
             transforms=transforms,
             transform_kwargs=transform_kwargs,
             load_ct_dims=[0, 1],
             **loading_kwargs
         )
     
-        train_loader, valid_loader = prepare_dataloaders(datasets, partition='train', **dataloader_kwargs)
+        train_loader, valid_loader = prepare_dataloaders(datasets, **dataloader_kwargs)
     
         optim = SimpleBPOptimizer(model, train_loader, valid_loader, device=device)
         history = optim.execute(**optim_kwargs)
