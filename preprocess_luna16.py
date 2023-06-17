@@ -13,6 +13,7 @@ import scipy as sp
 import skimage.io as io
 import matplotlib.path as mpath
 
+from skimage.morphology import remove_small_holes, binary_dilation
 from projectio import (
     luna16_ct_fnames,
     load_luna16_ct, 
@@ -50,36 +51,7 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-'''
-def preprocess_ct(fname, sid):
-    ct = load_luna16_ct(fname)
-    seg = load_luna16_seg(sid)
-    
-    clean_ct_mask = clean_luna16_ct(ct)
-    ct = apply_mask(ct, clean_ct_mask)
-    
-    lung_ct_mask = mask_luna16_ct(ct)
-    
-    filter_idxs = slides_filter(lung_ct_mask)
-    
-    ct = apply_filter(ct, filter_idxs)
-    seg = apply_filter(seg, filter_idxs)
-    lung_ct_mask = apply_filter(lung_ct_mask, filter_idxs)
-    
-    ct = normalize(ct)
-    
-    clahe_ct = apply_clahe(float64_to_cv8uc1(ct))
-    clahe_ct = cv8uc1_to_float64(clahe_ct)
-    clahe_ct = normalize(clahe_ct)
-    clahe_ct = float64_to_float16(clahe_ct)
-    
-    x = stack_channels(ct, lung_ct_mask, clahe_ct)
-    x = float64_to_float16(x)
-    
-    y = seg
-    
-    return x, y
-'''
+
 
 def get_subset(idx, subset_idxs):
     matches = np.array([idx in idxs for idxs in subset_idxs])
@@ -138,6 +110,16 @@ def main():
         lung_segs = io.imread(f'{lungs_dir}/{series_instance_uid}.mhd', plugin='simpleitk') 
         lung_segs = lung_segs.astype(bool)
         
+        def grow_and_fill(slide):
+            for _ in range(8): slide = binary_dilation(slide)
+            
+            slide = remove_small_holes(slide, area_threshold=4096)
+            
+            return slide
+            
+        grow_and_fill_lungs = np.vectorize(grow_and_fill, signature='(n,m)->(n,m)')
+        lung_segs = grow_and_fill_lungs(lung_segs)
+        
         imgs = imgs.astype(np.float32)
         
         imgs[imgs > CT_MAX] = CT_MAX
@@ -149,7 +131,7 @@ def main():
             imgs = imgs[len(imgs) - len(lung_segs) - 1:-1]
             nodules_segs = nodules_segs[len(imgs) - len(lung_segs) - 1:-1]
         
-        imgs[~lung_segs] = 0
+        #imgs[~lung_segs] = 0
         
         clahe_ct = apply_clahe(float64_to_cv8uc1(imgs))
         clahe_ct = cv8uc1_to_float64(clahe_ct)
@@ -166,42 +148,27 @@ def main():
             subset = get_subset(scan_count, subset_idxs)
             
             save_instance('LUNA16', 'train', subset, scan_count, x, y)
+            
+        if scan_count == 0:
+            gif_name = f'{LUNA16_PREPROCESSED_DATA_DIR}/example_mask.gif'
+            
+            plot_x = float32_to_float64(x)
+            
+            to_plot = np.array([
+                plot_x[:, :, :, 0],
+                plot_x[:, :, :, 2], 
+                plot_x[:, :, :, 1],
+                y
+            ], dtype=float)
+            to_plot = to_plot.swapaxes(0, 1)
+            
+            titles = ['Scan', 'CLAHE Scan', 'Lung Mask', 'Nodules Mask']
+            
+            plot_and_save_gif(to_plot, gif_name, titles=titles, verbose=True)
         
         scan_count += 1
         
         
-    '''
-    for subset in range(10):
-        ct_fnames = luna16_ct_fnames(subset)
-        seg_sids = luna16_seg_subset_sids(subset)
-        
-        for i, (ct_fname, seg_sid) in enumerate(zip(ct_fnames, seg_sids)):
-            x, y = preprocess_ct(ct_fname, seg_sid)
-            
-            if subset == 0 and i == 0:
-                gif_name = f'{LUNA16_PREPROCESSED_DATA_DIR}/example_mask.gif'
-                
-                plot_x = float16_to_float64(x)
-                
-                to_plot = np.array([
-                    plot_x[:, :, :, 0],
-                    plot_x[:, :, :, 2], 
-                    plot_x[:, :, :, 1],
-                    y
-                ], dtype=float)
-                to_plot = to_plot.swapaxes(0, 1)
-                
-                titles = ['Clean Scan', 'CLAHE Scan', 'Lung Mask', 'Nodules Mask']
-                
-                plot_and_save_gif(to_plot, gif_name, titles=titles, verbose=True)
-            
-            print(f'saving subset {subset + 1} instance {i + 1}...', end='')
-            
-            save_instance('LUNA16', subset, i, x, y)
-            
-            print('done')
-    '''
-            
     
     
 if __name__ == '__main__':
