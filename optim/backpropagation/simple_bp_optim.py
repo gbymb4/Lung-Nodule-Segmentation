@@ -148,7 +148,7 @@ class SimpleBPOptimizer:
                 [score * (slides / train_num_slides) for score, slides in score_tups]
             ) for name, score_tups in metrics_dict.items()}
             
-            history_record = history_record.update(wavg_metrics)
+            history_record.update(wavg_metrics)
 
             if i % valid_freq == 0 or epoch == epochs:
                 valid_num_slides = 0
@@ -202,7 +202,7 @@ class SimpleBPOptimizer:
                     [score * (slides / train_num_slides) for score, slides in score_tups]
                 ) for name, score_tups in metrics_dict.items()}
                 
-                history_record = history_record.update(wavg_metrics)
+                history_record.update(wavg_metrics)
 
             history.append(history_record)
 
