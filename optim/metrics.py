@@ -22,7 +22,7 @@ def accuracy(pred, true):
 
 def sensitivity(pred, true, epsilon=1e-7):
     pred = (pred > 0.5).reshape(-1)
-    true = true.reshape(-1)
+    true = true.bool().reshape(-1)
     
     true_positives = torch.sum(torch.logical_and(pred, true)).item()
     positives = torch.sum(true).item()
@@ -33,7 +33,7 @@ def sensitivity(pred, true, epsilon=1e-7):
 
 def specificity(pred, true, epsilon=1e-7):
     pred = (pred > 0.5).reshape(-1)
-    true = true.reshape(-1)
+    true = true.bool().reshape(-1)
     
     true_negatives = torch.sum(torch.logical_and(~pred, ~true)).item()
     negatives = torch.sum(~true).item()
