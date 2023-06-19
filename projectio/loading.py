@@ -290,6 +290,7 @@ class LNSegDataset(Dataset):
         load_ct_dims: Union[List[int], None]=None,
         load_limit: Union[int, None]=None, 
         device: str='cpu',
+        mask_lungs=False,
         transforms: Union[Iterable[Callable], None]=None,
         transform_kwargs: Union[Iterable[dict], None]=None
     ) -> None:
@@ -325,7 +326,8 @@ class LNSegDataset(Dataset):
             load_ct_dims, 
             transforms, 
             transform_kwargs, 
-            device
+            device,
+            mask_lungs
         )   
      
      
@@ -352,7 +354,8 @@ class LNSegDataset(Dataset):
         load_ct_dims: Iterable[int],
         transforms: Iterable[Callable],
         transform_kwargs: Iterable[dict],
-        device: str
+        device: str,
+        mask_lungs: bool
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         
         data = np.load(scan_fname)
@@ -368,6 +371,9 @@ class LNSegDataset(Dataset):
         y = y[:, :, :, np.newaxis].swapaxes(1, 3)
         y = y.swapaxes(0, 1)
 
+        if mask_lungs:
+            x[~np.tile(x[-1:], (len(x), *[1] * (len(x.shape) - 1)))] = 0
+    
         if load_ct_dims is not None:
             x = x[np.array(load_ct_dims), :, :, :]
 
@@ -404,7 +410,8 @@ class LNSegDatasetNodules(LNSegDataset):
         load_ct_dims: Iterable[int],
         transforms: Iterable[Callable],
         transform_kwargs: Iterable[dict],
-        device: str
+        device: str,
+        mask_lungs: bool
     ) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         
         data = np.load(scan_fname)
@@ -419,6 +426,9 @@ class LNSegDatasetNodules(LNSegDataset):
 
         y = y[:, :, :, np.newaxis].swapaxes(1, 3)
         y = y.swapaxes(0, 1)
+
+        if mask_lungs:
+            x[~np.tile(x[-1:], (len(x), *[1] * (len(x.shape) - 1)))] = 0
 
         if load_ct_dims is not None:
             x = x[np.array(load_ct_dims), :, :, :]
@@ -490,7 +500,13 @@ def prepare_dataset(inputs):
 
 
 
-def prepare_datasets(dataset, dataset_type, partition, num_workers=1, **kwargs):
+def prepare_datasets(
+    dataset, 
+    dataset_type, 
+    partition, 
+    num_workers=1, 
+    **kwargs
+):
     assert num_workers > 0
 
     if dataset.lower() == 'luna16':

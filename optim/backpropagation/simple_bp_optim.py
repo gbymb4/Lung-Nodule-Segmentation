@@ -12,7 +12,7 @@ import numpy as np
 from torch import nn
 from torch.utils.data import DataLoader
 from typing import List
-from optim import WeightedBCELoss, BinaryDiceLoss
+from optim import CompositeLoss, compute_all_metrics
 
 class SimpleBPOptimizer:
     
@@ -56,15 +56,25 @@ class SimpleBPOptimizer:
 
 
         
-    def execute(self, epochs=100, lr=1e-5, cum_batch_size=32, valid_freq=10, verbose=True) -> List[dict]:
+    def execute(self,
+        epochs=100,
+        lr=1e-5,
+        cum_batch_size=32,
+        valid_freq=10, 
+        wbce_weight=1,
+        dice_weight=100,
+        verbose=True
+    ) -> List[dict]:
         history = []
 
         start = time.time()
 
         optim = torch.optim.Adam(self.model.parameters(), lr=lr)
-        criterion = WeightedBCELoss(self.positive_weight)
-
-        compute_dice = BinaryDiceLoss()
+        criterion = CompositeLoss(
+            self.positive_weight, 
+            wbce_weight=wbce_weight,
+            dice_weight=dice_weight
+        )
         
         print('#'*32)
         print('beginning BP training loop...')
@@ -80,15 +90,10 @@ class SimpleBPOptimizer:
             
             train_num_slides = 0
             train_loss = 0
-            train_correct_pixels = 0
-            train_total_pixels = 0
-            train_tp_pixels = 0
-            train_gt_pixels = 0
-            train_fp_pixels = 0
-            train_fn_pixels = 0
-            train_cum_dice = 0
             
             model = self.model.train()
+            
+            metrics_dict = {}
 
             for batch in self.train_loader:
                 xs, ys = batch
@@ -101,14 +106,15 @@ class SimpleBPOptimizer:
                     ct = ct.to(self.device)
                     seg = seg.to(self.device)
 
+                    # split inputs into 'num_chunks' chunks for grad accumulation
                     ct_chunks = torch.chunk(ct, num_chunks, dim=1)
                     seg_chunks = torch.chunk(seg, num_chunks, dim=1)
                     
+                    # ensure no chunks have only a single slide for BatchNorm layers
                     if len(ct_chunks) > 1 and ct_chunks[-1].size(1) == 1:
                         merged_ct_chunk = torch.cat((ct_chunks[-2], ct_chunks[-1]), dim=1)
                         ct_chunks = ct_chunks[:-2] + (merged_ct_chunk,)
-                    
-                    if len(seg_chunks) > 1 and seg_chunks[-1].size(1) == 1:
+                        
                         merged_seg_chunk = torch.cat((seg_chunks[-2], seg_chunks[-1]), dim=1)
                         seg_chunks = seg_chunks[:-2] + (merged_seg_chunk,)
 
@@ -117,55 +123,40 @@ class SimpleBPOptimizer:
                         seg_chunk = seg_chunk.unsqueeze(dim=0).float()
 
                         pred_chunk = model(ct_chunk)
-                        pred_mask = (pred_chunk > 0.5).bool()
-
-                        train_correct_pixels += (pred_mask == seg_chunk).sum().item()
-                        train_total = np.array(ct_chunk.size()).prod()
-                        train_total_pixels += train_total
-
-                        train_tp_mask = torch.logical_and(pred_mask, seg_chunk.to(torch.bool))
-
-                        train_tp_pixels += train_tp_mask.reshape(train_tp_mask.size(0), -1).sum(dim=1).item()
-                        train_gt = seg_chunk.reshape(seg_chunk.size(0), -1).sum(dim=1).item()
-                        train_gt_pixels += train_gt
-
-                        train_fp_mask = torch.logical_or(pred_mask, ~seg_chunk.to(torch.bool))
-
-                        train_fp_pixels += train_fp_mask.reshape(train_fp_mask.size(0), -1).sum(dim=1).item()
-                        train_fn_pixels += train_total - train_gt
 
                         chunk_loss = criterion(pred_chunk, seg_chunk)
-                        chunk_loss.backward()
+                        chunk_loss.backward() # accumulate gradients
                         
                         train_num_slides += len(ct_chunk)
                         train_loss += chunk_loss.item()
+                        
+                        metric_scores = compute_all_metrics(pred_chunk, seg_chunk)
+                        
+                        for name, score in metric_scores.items():
+                            if name not in metrics_dict.keys():
+                                metrics_dict[name] = [(score, len(ct_chunk))]
+                            else:
+                                metrics_dict[name].append((score, len(ct_chunk)))
 
-                        dice = compute_dice(pred_chunk, seg_chunk).item()
-                        norm_dice = dice * (seg_chunk.size()[1] / self.train_slides)
 
-                        train_cum_dice += norm_dice
-
-                optim.step()
+                optim.step() # update model with accumulated gradients
             
             history_record['train_loss'] = train_loss
             history_record['train_norm_loss'] = train_loss / train_num_slides
-            history_record['train_acc'] = train_correct_pixels / train_total_pixels
-            history_record['train_tpr'] = train_tp_pixels / train_gt_pixels
-            history_record['train_fpr'] = train_fp_pixels / train_fn_pixels
-            history_record['train_dice'] = train_cum_dice
+            
+            wavg_metrics = {f'train_{name}': sum(
+                [score * (slides / train_num_slides) for score, slides in score_tups]
+            ) for name, score_tups in metrics_dict.items()}
+            
+            history_record = history_record.update(wavg_metrics)
 
-            if i % valid_freq == 0:
+            if i % valid_freq == 0 or epoch == epochs:
                 valid_num_slides = 0
                 valid_loss = 0
-                valid_correct_pixels = 0
-                valid_total_pixels = 0
-                valid_tp_pixels = 0
-                valid_gt_pixels = 0
-                valid_fp_pixels = 0
-                valid_fn_pixels = 0
-                valid_cum_dice = 0
     
                 model = self.model.eval()
+                
+                metrics_dict = {}
     
                 for batch in self.valid_loader:
                     xs, ys = batch
@@ -182,8 +173,7 @@ class SimpleBPOptimizer:
                         if len(ct_chunks) > 1 and ct_chunks[-1].size(1) == 1:
                             merged_ct_chunk = torch.cat((ct_chunks[-2], ct_chunks[-1]), dim=1)
                             ct_chunks = ct_chunks[:-2] + (merged_ct_chunk,)
-                        
-                        if len(seg_chunks) > 1 and seg_chunks[-1].size(1) == 1:
+                            
                             merged_seg_chunk = torch.cat((seg_chunks[-2], seg_chunks[-1]), dim=1)
                             seg_chunks = seg_chunks[:-2] + (merged_seg_chunk,)
                             
@@ -192,39 +182,27 @@ class SimpleBPOptimizer:
                             seg_chunk = seg_chunk.unsqueeze(dim=0).float()
     
                             pred_chunk = model(ct_chunk)
-                            pred_mask = (pred_chunk > 0.5).bool()
-    
-                            valid_correct_pixels += (pred_mask == seg_chunk).sum().item()
-                            valid_total = np.array(ct_chunk.size()).prod()
-                            valid_total_pixels += valid_total
-    
-                            valid_tp_mask = torch.logical_and(pred_mask, seg_chunk.to(torch.bool))
-    
-                            valid_tp_pixels += valid_tp_mask.reshape(valid_tp_mask.size(0), -1).sum(dim=1).item()
-                            valid_gt = seg_chunk.reshape(seg_chunk.size(0), -1).sum(dim=1).item()
-                            valid_gt_pixels += valid_gt
-    
-                            valid_fp_mask = torch.logical_or(pred_mask, ~seg_chunk.to(torch.bool))
-    
-                            valid_fp_pixels += valid_fp_mask.reshape(valid_fp_mask.size(0), -1).sum(dim=1).item()
-                            valid_fn_pixels += valid_total - valid_gt
     
                             chunk_loss = criterion(pred_chunk, seg_chunk)
                                 
                             valid_num_slides += len(ct_chunk)
                             valid_loss += chunk_loss.item()
+                            metric_scores = compute_all_metrics(pred_chunk, seg_chunk)
+                            
+                            for name, score in metric_scores.items():
+                                if name not in metrics_dict.keys():
+                                    metrics_dict[name] = [(score, len(ct_chunk))]
+                                else:
+                                    metrics_dict[name].append((score, len(ct_chunk)))
 
-                            dice = compute_dice(pred_chunk, seg_chunk).item()
-                            norm_dice = dice * (seg_chunk.size()[1] / self.valid_slides)
-
-                            valid_cum_dice += norm_dice
-                                
                 history_record['valid_loss'] = valid_loss
                 history_record['valid_norm_loss'] = valid_loss / valid_num_slides
-                history_record['valid_acc'] = valid_correct_pixels / valid_total_pixels
-                history_record['valid_tpr'] = valid_tp_pixels / valid_gt_pixels
-                history_record['valid_fpr'] = valid_fp_pixels / valid_fn_pixels
-                history_record['valid_dice'] = valid_cum_dice
+                
+                wavg_metrics = {f'valid_{name}': sum(
+                    [score * (slides / train_num_slides) for score, slides in score_tups]
+                ) for name, score_tups in metrics_dict.items()}
+                
+                history_record = history_record.update(wavg_metrics)
 
             history.append(history_record)
 

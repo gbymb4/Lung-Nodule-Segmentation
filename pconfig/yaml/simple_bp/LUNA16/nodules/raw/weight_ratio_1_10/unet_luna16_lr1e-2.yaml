@@ -8,11 +8,14 @@ train: true
 test: false
 optimizer_arguments:
   epochs: 100
-  lr: 0.001
+  lr: 0.01
   cum_batch_size: 20
   valid_freq: 1
+  wbce_weight: 1
+  dice_weight: 10
 loading_arguments:
   num_workers: 8
+  mask_lungs: true
 dataloader_arguments:
   batch_size: 8
   train_idx: 0

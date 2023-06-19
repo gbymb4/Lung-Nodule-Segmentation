@@ -39,6 +39,7 @@ def prepare_config(
     device = config['device']
     train = config['train']
     test = config['test']
+    
     optim_kwargs = config['optimizer_arguments']
     loading_kwargs = config['loading_arguments']
     dataloader_kwargs = config['dataloader_arguments']

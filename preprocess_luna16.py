@@ -85,7 +85,7 @@ def main():
         num_slides = len(scan.slice_zvals)
         
         if series_instance_uid not in all_ids: continue
-        
+    
         imgs = scan.load_all_dicom_images(verbose=False)
         imgs = np.stack([dcm.pixel_array for dcm in imgs], axis=0)
         
@@ -130,8 +130,6 @@ def main():
         if len(imgs) != len(lung_segs):
             imgs = imgs[len(imgs) - len(lung_segs) - 1:-1]
             nodules_segs = nodules_segs[len(imgs) - len(lung_segs) - 1:-1]
-        
-        #imgs[~lung_segs] = 0
         
         clahe_ct = apply_clahe(float64_to_cv8uc1(imgs))
         clahe_ct = cv8uc1_to_float64(clahe_ct)
