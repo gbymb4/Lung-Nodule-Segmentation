@@ -372,7 +372,7 @@ class LNSegDataset(Dataset):
         y = y.swapaxes(0, 1)
 
         if mask_lungs:
-            x[~(np.tile(x[-1:], (len(x), *[1] * (len(x.shape) - 1)))).astype(bool)] = 0
+            x[~(np.tile(x[1:2], (len(x), *[1] * (len(x.shape) - 1)))).astype(bool)] = 0
     
         if load_ct_dims is not None:
             x = x[np.array(load_ct_dims), :, :, :]
@@ -428,7 +428,7 @@ class LNSegDatasetNodules(LNSegDataset):
         y = y.swapaxes(0, 1)
 
         if mask_lungs:
-            x[~(np.tile(x[-1:], (len(x), *[1] * (len(x.shape) - 1)))).astype(bool)] = 0
+            x[~(np.tile(x[1:2], (len(x), *[1] * (len(x.shape) - 1)))).astype(bool)] = 0
 
         if load_ct_dims is not None:
             x = x[np.array(load_ct_dims), :, :, :]

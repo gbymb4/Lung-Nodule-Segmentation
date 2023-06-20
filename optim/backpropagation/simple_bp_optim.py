@@ -127,16 +127,18 @@ class SimpleBPOptimizer:
                         chunk_loss = criterion(pred_chunk, seg_chunk)
                         chunk_loss.backward() # accumulate gradients
                         
-                        train_num_slides += len(ct_chunk)
+                        batch_size = ct_chunk.shape[1]
+                        
+                        train_num_slides += batch_size
                         train_loss += chunk_loss.item()
                         
                         metric_scores = compute_all_metrics(pred_chunk, seg_chunk)
                         
                         for name, score in metric_scores.items():
                             if name not in metrics_dict.keys():
-                                metrics_dict[name] = [(score, len(ct_chunk))]
+                                metrics_dict[name] = score * batch_size
                             else:
-                                metrics_dict[name].append((score, len(ct_chunk)))
+                                metrics_dict[name] += score * batch_size
 
 
                 optim.step() # update model with accumulated gradients
@@ -144,9 +146,9 @@ class SimpleBPOptimizer:
             history_record['train_loss'] = train_loss
             history_record['train_norm_loss'] = train_loss / train_num_slides
             
-            wavg_metrics = {f'train_{name}': sum(
-                [score * (slides / train_num_slides) for score, slides in score_tups]
-            ) for name, score_tups in metrics_dict.items()}
+            wavg_metrics = {
+                f'train_{name}': w_score / train_num_slides for name, w_score in metrics_dict.items()
+            }
             
             history_record.update(wavg_metrics)
 
@@ -184,23 +186,26 @@ class SimpleBPOptimizer:
                             pred_chunk = model(ct_chunk)
     
                             chunk_loss = criterion(pred_chunk, seg_chunk)
+                            
+                            batch_size = ct_chunk.shape[1]
                                 
-                            valid_num_slides += len(ct_chunk)
+                            valid_num_slides += batch_size
                             valid_loss += chunk_loss.item()
+                            
                             metric_scores = compute_all_metrics(pred_chunk, seg_chunk)
                             
                             for name, score in metric_scores.items():
                                 if name not in metrics_dict.keys():
-                                    metrics_dict[name] = [(score, len(ct_chunk))]
+                                    metrics_dict[name] = score * batch_size
                                 else:
-                                    metrics_dict[name].append((score, len(ct_chunk)))
+                                    metrics_dict[name] += score * batch_size
 
                 history_record['valid_loss'] = valid_loss
                 history_record['valid_norm_loss'] = valid_loss / valid_num_slides
                 
-                wavg_metrics = {f'valid_{name}': sum(
-                    [score * (slides / train_num_slides) for score, slides in score_tups]
-                ) for name, score_tups in metrics_dict.items()}
+                wavg_metrics = {
+                    f'valid_{name}': w_score / valid_num_slides for name, w_score in metrics_dict.items()
+                }
                 
                 history_record.update(wavg_metrics)
 
