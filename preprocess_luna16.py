@@ -28,7 +28,9 @@ from pconfig import (
     LUNA16_PREPROCESSED_DATA_DIR, 
     IMG_SIZE,
     CT_MAX,
-    CT_MIN
+    CT_MIN,
+    TRAIN_FRACTION,
+    LUNA16_NUM_SUBSETS
 )
 from preprocessing import (
     mask_luna16_ct, 
@@ -64,9 +66,6 @@ def main():
     warnings.simplefilter('ignore')
     set_seed(0)
     
-    train_frac = 0.7
-    num_subsets = 4
-    
     scans = pl.query(pl.Scan)
     all_ids = set(luna16_seg_sids())
     
@@ -74,10 +73,10 @@ def main():
     
     idxs = np.random.choice(num_scans, size=(num_scans,), replace=False)
     
-    train_idxs = idxs[:int(num_scans * train_frac)]
-    test_idxs = idxs[int(num_scans * train_frac):-1]
+    train_idxs = idxs[:int(num_scans * TRAIN_FRACTION)]
+    test_idxs = idxs[int(num_scans * TRAIN_FRACTION):-1]
     
-    subset_idxs = np.array_split(train_idxs, num_subsets)
+    subset_idxs = np.array_split(train_idxs, LUNA16_NUM_SUBSETS)
     
     scan_count = 0
     for scan in tqdm(scans):

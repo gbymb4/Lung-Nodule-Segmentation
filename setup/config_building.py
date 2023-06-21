@@ -1,6 +1,7 @@
 import yaml
 
 from typing import Tuple, Callable
+from copy import deepcopy
 from models.unet import *
 from models.wnet import *
 from projectio import LNSegDataset, LNSegDatasetNodules
@@ -18,9 +19,9 @@ def prepare_config(
     config: dict
 ) -> Tuple[int, str, Callable, str, dict, dict, dict]:
     seed = config['seed']
-    dataset = config['dataset']
-    dataset_type = config['dataset_type']
-    model_name = config['model']
+    dataset = deepcopy(config['dataset'])
+    dataset_type = deepcopy(config['dataset_type'])
+    model_name = deepcopy(config['model'])
 
     if model_name.lower() == 'r2unet':
         model = R2UNet
@@ -36,13 +37,15 @@ def prepare_config(
     elif dataset_type.lower() == 'nodules':
         dataset_type = LNSegDatasetNodules
 
-    device = config['device']
-    train = config['train']
-    test = config['test']
+    device = deepcopy(config['device'])
+    train = deepcopy(config['train'])
+    test = deepcopy(config['test'])
+    cross_valid = deepcopy(config['cross_valid'])
     
-    optim_kwargs = config['optimizer_arguments']
-    loading_kwargs = config['loading_arguments']
-    dataloader_kwargs = config['dataloader_arguments']
+    model_kwargs = deepcopy(config['model_arguments'])
+    optim_kwargs = deepcopy(config['optimizer_arguments'])
+    loading_kwargs = deepcopy(config['loading_arguments'])
+    dataloader_kwargs = deepcopy(config['dataloader_arguments'])
 
     if 'zoom_transform' in config.keys() and config['zoom_transform']:
         transforms = [zoom_and_resize_ct_and_seg]
@@ -51,8 +54,8 @@ def prepare_config(
         transforms = None
         transform_kwargs = None
 
-    args = (seed, dataset, dataset_type, model, device, transforms, train, test)
-    kwargs = (transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs)
+    args = (seed, dataset, dataset_type, model, device, transforms, train, test, cross_valid)
+    kwargs = (model_kwargs, transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs)
 
     out = (*args, *kwargs)
 

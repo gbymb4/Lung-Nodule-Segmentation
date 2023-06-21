@@ -6,6 +6,10 @@ device: cuda
 zoom_transform: false
 train: true
 test: false
+cross_valid: true
+model_arguments:
+  channels: 16
+  img_channels: 2
 optimizer_arguments:
   epochs: 500
   lr: 0.001

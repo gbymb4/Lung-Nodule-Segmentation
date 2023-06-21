@@ -10,6 +10,7 @@ import imageio, os, time, json, torch, yaml
 import numpy as np
 import matplotlib.pyplot as plt
 
+from matplotlib.ticker import AutoMinorLocator
 from torch import nn
 from typing import List
 from pconfig import NSCLC_PREPROCESSED_DATA_DIR, LUNA16_PREPROCESSED_DATA_DIR, OUT_DIR
@@ -53,7 +54,36 @@ def plot_and_save_gif(
     for fig in fig_handles:
         plt.close(fig)
         
-        
+
+
+def plot_and_save_metric(train, valid, metric, fname):
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    epochs = list(range(1, len(train) + 1))
+
+    ax.plot(epochs, train, label='Train', alpha=0.7)
+    ax.plot(epochs, valid, label='Validation', alpha=0.7)   
+    
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    ax.yaxis.set_minor_locator(AutoMinorLocator())
+
+    ax.tick_params(which='major', length=4)
+    ax.tick_params(which='minor', length=2, color='r')
+    
+    ax.legend()
+    ax.grid(axis='y', c='white')
+    
+    ax.set_facecolor('whitesmoke')
+    
+    metric_name = (' '.join(metric.split('_'))).title()
+    
+    ax.set_xlabel('Epoch', fontsize=18)
+    ax.set_ylabel(metric_name, fontsize=18)
+    
+    plt.savefig(fname)
+    plt.show()
+    
+
 
 def save_instance(
     dataset: str,
