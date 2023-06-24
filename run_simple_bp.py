@@ -1,18 +1,27 @@
-import torch, random, warnings, sys, time, os
+import warnings, sys, os, json
+import math, torch, random, time
 
 import numpy as np
 
 from models.unet import *
 from models.wnet import *
+
 from setup import parse_config, prepare_config
+
 from projectio import (
     prepare_datasets, 
     prepare_dataloaders, 
+    prepare_testloader,
+    load_model,
     save_history_dict_and_model, 
     plot_and_save_gif, 
-    plot_and_save_metric
+    plot_and_save_metric,
+    plot_and_save_slide
 )
+
+from optim import compute_all_metrics
 from optim.backpropagation import SimpleBPOptimizer
+
 from pconfig import (
     OUT_DIR,
     LUNA16_NUM_SUBSETS,
@@ -115,14 +124,11 @@ def dump_preds_gif_and_metrics_plots(
 
 def run_train(
     dataset, 
-    dataset_type, 
     model_type, 
     device, 
-    transforms, 
     model_kwargs, 
-    transform_kwargs, 
     optim_kwargs, 
-    loading_kwargs, 
+    datasets,
     dataloader_kwargs,
     config_dict,
     root_id
@@ -131,16 +137,6 @@ def run_train(
     
     if hasattr(model, 'compile'):
         model = model.compile()
-
-    datasets = prepare_datasets(
-        dataset,
-        dataset_type,
-        'train',
-        transforms=transforms,
-        transform_kwargs=transform_kwargs,
-        load_ct_dims=[0, 1],
-        **loading_kwargs
-    )
 
     train_loader, valid_loader = prepare_dataloaders(datasets, **dataloader_kwargs)
 
@@ -162,6 +158,174 @@ def run_train(
     
     return history
 
+
+
+def run_test(
+    dataset,
+    dataset_type,
+    model_type,
+    model_kwargs,
+    device,
+    loading_kwargs,
+    transforms,
+    transform_kwargs,
+    dataloader_kwargs,
+    cum_batch_size,
+    histories,
+    root_id,
+):
+    testset = prepare_datasets(
+        dataset,
+        dataset_type,
+        'test',
+        transforms=transforms,
+        transform_kwargs=transform_kwargs,
+        load_ct_dims=[0, 1],
+        **loading_kwargs
+    )[0]
+    
+    testloader = prepare_testloader(testset, **dataloader_kwargs)
+    
+    last_training_epochs_dice = [history[-1]['valid_hard_dice'] for history in histories]
+    best_train_idx_model = np.argmax(last_training_epochs_dice)
+    
+    model = load_model(
+        model_type, 
+        model_kwargs, 
+        root_id, 
+        best_train_idx_model,
+        id
+    )
+    model = model.to(device)
+    
+    metrics_dict = {}
+    num_slides = 0
+    
+    render_freq = 10
+    
+    test_dir = '{}/{}/{}/{}/{}_{}_test'.format(
+        OUT_DIR,
+        dataset.lower(),
+        type(model).__name__,
+        root_id,
+        best_train_idx_model,
+        id
+    )
+    
+    if not os.path.isdir(test_dir):
+        os.mkdir(test_dir)
+        
+    gifs_dir = f'{test_dir}/gifs'
+    
+    if not os.path.isdir(gifs_dir):
+        os.mkdir(gifs_dir)
+        
+    plots_dir = f'{test_dir}/plots'
+    
+    if not os.path.isdir(plots_dir):
+        os.mkdir(plots_dir)
+
+    print('-'*32)
+    print('beginning test loop...')
+
+    scan_count = 0
+    for batch in testloader:
+        xs, ys = batch
+            
+        for ct, seg in zip(xs, ys):
+            num_chunks = math.ceil(ct.size(1) / cum_batch_size)
+                
+            ct = ct.to(device)
+            seg = seg.to(device)
+            
+            ct_chunks = torch.chunk(ct, num_chunks, dim=1)
+            seg_chunks = torch.chunk(seg, num_chunks, dim=1)
+            
+            if len(ct_chunks) > 1 and ct_chunks[-1].size(1) == 1:
+                merged_ct_chunk = torch.cat((ct_chunks[-2], ct_chunks[-1]), dim=1)
+                ct_chunks = ct_chunks[:-2] + (merged_ct_chunk,)
+                
+                merged_seg_chunk = torch.cat((seg_chunks[-2], seg_chunks[-1]), dim=1)
+                seg_chunks = seg_chunks[:-2] + (merged_seg_chunk,)
+                
+            inputs = []
+            gts = []
+            predictions = []
+                
+            for ct_chunk, seg_chunk in zip(ct_chunks, seg_chunks):
+                ct_chunk = ct_chunk.unsqueeze(dim=0).float()
+                seg_chunk = seg_chunk.unsqueeze(dim=0).float()
+                
+                inputs.append(ct_chunk.detach().cpu().numpy()[0])
+                gts.append(seg_chunk.detach().cpu().numpy()[0])
+
+                pred_chunk = model(ct_chunk)
+                predictions.append(pred_chunk.detach().cpu().numpy())
+                
+                batch_size = ct_chunk.shape[1]
+                num_slides += batch_size
+                
+                metric_scores = compute_all_metrics(pred_chunk, seg_chunk)
+                
+                for name, score in metric_scores.items():
+                    if name not in metrics_dict.keys():
+                        metrics_dict[name] = score * batch_size
+                    else:
+                        metrics_dict[name] += score * batch_size
+                    
+            if scan_count % render_freq == 0:
+                inputs = np.concatenate(inputs, axis=1)
+                inputs = inputs.swapaxes(0, 1)
+                inputs = inputs.swapaxes(1, 3)
+                
+                gts = np.concatenate(gts, axis=1)
+                gts = gts.swapaxes(0, 1)
+                gts = gts.swapaxes(1, 3)
+                
+                predictions = np.concatenate(predictions, axis=1)
+                predictions = predictions.swapaxes(0, 1)
+                predictions = predictions.swapaxes(1, 3)
+                
+                hard_predictions = predictions > 0.5
+                
+                to_plot = np.array([
+                    inputs[:, :, :, :1],
+                    gts,
+                    predictions,
+                    hard_predictions
+                ], dtype=float)
+                to_plot = to_plot.swapaxes(0, 1)
+
+                titles = ['Input', 'GT', 'Raw Output', 'Prediction']
+
+                print('preparing example prediction gif...')
+                
+                gif_name = f'{gifs_dir}/example_preds_gif_{scan_count}.gif'
+                plot_and_save_gif(to_plot, gif_name, titles, verbose=True, fps=3)
+                
+                print('plotting middle slides...')
+                
+                plot_name = f'{plots_dir}/' + 'example_{}_plot_{}.pdf'
+                plot_and_save_slide(inputs[len(inputs) // 2], plot_name.format('input', scan_count))
+                plot_and_save_slide(inputs[len(gts) // 2], plot_name.format('gt', scan_count))
+                plot_and_save_slide(inputs[len(predictions) // 2], plot_name.format('raw_out', scan_count))
+                plot_and_save_slide(inputs[len(hard_predictions) // 2], plot_name.format('pred', scan_count))
+                
+            scan_count += 1
+    
+    wavg_metrics = {
+        f'test_{name}': w_score / num_slides for name, w_score in metrics_dict.items()
+    }
+    
+    metrics_fname = f'{test_dir}/test_performance.json'
+    
+    with open(metrics_fname, 'w') as file:
+        json.dump(wavg_metrics, file)
+    
+    print('done!')
+    print('-'*32)
+    
+    
 
 
 def main():
@@ -187,17 +351,24 @@ def main():
     histories = []
 
     if train:
+        datasets = prepare_datasets(
+            dataset,
+            dataset_type,
+            'train',
+            transforms=transforms,
+            transform_kwargs=transform_kwargs,
+            load_ct_dims=[0, 1],
+            **loading_kwargs
+        )
+        
         if not cross_valid:
             history = run_train(
                 dataset, 
-                dataset_type, 
                 model_type, 
                 device, 
-                transforms, 
                 model_kwargs, 
-                transform_kwargs, 
                 optim_kwargs, 
-                loading_kwargs, 
+                datasets,
                 dataloader_kwargs,
                 config_dict,
                 root_id
@@ -218,14 +389,11 @@ def main():
                 
                 history = run_train(
                     dataset, 
-                    dataset_type, 
                     model_type, 
                     device, 
-                    transforms, 
                     model_kwargs, 
-                    transform_kwargs, 
                     optim_kwargs, 
-                    loading_kwargs, 
+                    datasets,
                     dataloader_kwargs,
                     config_dict,
                     root_id
@@ -234,7 +402,21 @@ def main():
                 histories.append(histories)
                 
     if test:
-        ...
+        cum_batch_size = dataloader_kwargs['cum_batch_size']
+        
+        run_test(
+            dataset, 
+            dataset_type, 
+            model_type, 
+            model_kwargs, 
+            loading_kwargs, 
+            transforms,
+            transform_kwargs,
+            dataloader_kwargs, 
+            cum_batch_size,
+            histories,
+            root_id
+        )
     
     print('all done!')
 

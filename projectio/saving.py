@@ -83,6 +83,17 @@ def plot_and_save_metric(train, valid, metric, fname):
     plt.savefig(fname)
     plt.show()
     
+    
+    
+def plot_and_save_slide(slide, fname):
+    fig, ax = plt.subplots(figsize=(10, 10))
+    
+    ax.axis('off')
+    ax.imshow(slide, cmap='gray')
+    
+    plt.savefig(fname)
+    plt.show()
+    
 
 
 def save_instance(

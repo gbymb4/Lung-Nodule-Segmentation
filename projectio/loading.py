@@ -13,16 +13,28 @@ import pydicom as dicom
 import pylidc as pl
 import matplotlib.path as mpath
 
+from .augmentation import (
+    random_hflip,
+    random_vflip,
+    random_rotate,
+    random_roll
+)
+
 from pconfig import (
     LUNA16_RAW_DATA_DIR, 
     NSCLC_RAW_DATA_DIR, 
     LUNA16_PREPROCESSED_DATA_DIR, 
     NSCLC_PREPROCESSED_DATA_DIR,
+    OUT_DIR,
     IMG_SIZE
 )
+
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
+
 from typing import Union, Iterable, Callable, Tuple, List
+
 from multiprocessing import Pool
+
 from pylidc.utils import consensus
 from skimage.measure import find_contours
 
@@ -280,6 +292,23 @@ def load_nsclc_seg(fname: str) -> np.ndarray:
 
 
 
+def load_model(
+    model_type,
+    model_kwargs,
+    root_id, 
+    train_idx,
+    id
+):
+    model_dir = f'{OUT_DIR}/{model_type.__name__}/{root_id}/{train_idx}_{id}'
+    model_weights_fname = f'{model_dir}/model'
+    
+    model = model_type(**model_kwargs)
+    model.load_state_dict(torch.load(model_weights_fname))
+    
+    return model.eval()
+    
+
+
 class LNSegDataset(Dataset):
     
     def __init__(
@@ -307,6 +336,8 @@ class LNSegDataset(Dataset):
             else:
                 raise ValueError(f"invalid value for arg 'dataset': {dataset}")
                 
+            self.augment = True
+                
         elif partition == 'test':
             
             if dataset.lower() == 'luna16':
@@ -315,6 +346,8 @@ class LNSegDataset(Dataset):
                 data_dir = f'{NSCLC_PREPROCESSED_DATA_DIR}/test'
             else:
                 raise ValueError(f"invalid value for arg 'dataset': {dataset}")
+                
+            self.augment = False
             
         else:
             raise ValueError(f"invalid value for arg 'partition': {partition}")
@@ -343,6 +376,12 @@ class LNSegDataset(Dataset):
         
         xs = self.xs[idx]
         ys = self.ys[idx]
+        
+        if self.augment:
+            xs, ys = random_hflip(xs, ys)
+            xs, ys = random_vflip(xs, ys)
+            xs, ys = random_rotate(xs, ys)
+            xs, ys = random_roll(xs, ys)
         
         return xs, ys
     
@@ -547,6 +586,12 @@ def prepare_dataloaders(datasets, train_idx, **kwargs):
     valid = DataLoader(ConcatDataset(valid_datasets), collate_fn=__collate_fn, **kwargs)
     
     return train, valid
+
+
+
+def prepare_testloader(testset, **kwargs):
+    return DataLoader(testset, collate_fn=__collate_fn, **kwargs)
+
 
 
 def __collate_fn(batch):
