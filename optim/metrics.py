@@ -20,26 +20,37 @@ def accuracy(pred, true):
 
 
 
-def sensitivity(pred, true, epsilon=1e-7):
+def sensitivity(pred, true):
     pred = (pred > 0.5).reshape(-1)
     true = true.bool().reshape(-1)
     
-    true_positives = torch.sum(torch.logical_and(pred, true)).item()
-    positives = torch.sum(true).item()
+    true_positives = (pred & true).sum().item()
+    positives = true.sum().item()
     
-    return true_positives / (positives + epsilon)
+    return true_positives / positives if positives > 0 else 0
 
 
 
-def specificity(pred, true, epsilon=1e-7):
+def specificity(pred, true):
     pred = (pred > 0.5).reshape(-1)
     true = true.bool().reshape(-1)
     
-    true_negatives = torch.sum(torch.logical_and(~pred, ~true)).item()
-    negatives = torch.sum(~true).item()
+    true_negatives = (~pred & ~true).sum().item()
+    negatives = (~true).sum().item()
     
-    return true_negatives / (negatives + epsilon)
+    return true_negatives / negatives if negatives > 0 else 0
     
+
+
+def fpr(pred, true):
+    pred = (pred > 0.5).reshape(-1)
+    true = true.bool().reshape(-1)
+    
+    false_positives = (pred & ~true).sum().item()
+    negatives = (~true).sum().item()
+
+    return false_positives / negatives if negatives > 0 else 0
+
 
 
 def hard_dice(pred, true, epsilon=1e-7):
@@ -53,8 +64,8 @@ def compute_all_metrics(pred, true, epsilon=1-7):
     results = {}
     
     results['accuracy'] = accuracy(pred, true)
-    results['sensitivity'] = sensitivity(pred, true, epsilon=1-7)
-    results['specificity'] = specificity(pred, true, epsilon=1-7)
+    results['sensitivity'] = sensitivity(pred, true)
+    results['specificity'] = specificity(pred, true)
     results['hard_dice'] = hard_dice(pred, true, epsilon=1-7)
     
     return results

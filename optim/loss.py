@@ -58,12 +58,11 @@ class HardDiceLoss:
 
     def __call__(self, pred, true):
         pred = pred.reshape(-1)
-        true = true.reshape(-1)
+        true = true.bool().reshape(-1)
         
-        pred = (pred > 0.5).float()
-        pred = torch.clip(pred, self.epsilon, 1 - self.epsilon)
+        pred = pred > 0.5
 
-        intersection = (pred * true).sum()
+        intersection = (pred & true).sum()
         dice_coefficient = (2.0 * intersection) / (pred.sum() + true.sum())
 
         dice_loss = 1.0 - dice_coefficient
