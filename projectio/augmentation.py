@@ -64,7 +64,7 @@ def random_rotate(xs, ys, p=0.1):
         xs = rotate(xs, angle)
         ys = rotate(ys, angle)
         
-    return xs, 
+    return xs, ys
 
 
 
