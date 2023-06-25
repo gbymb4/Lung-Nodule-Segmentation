@@ -380,7 +380,7 @@ class LNSegDataset(Dataset):
         if self.augment:
             xs, ys = random_hflip(xs, ys)
             xs, ys = random_vflip(xs, ys)
-            xs, ys = random_rotate(xs, ys)
+            xs, ys = random_rotate(xs, ys, p=0)
             xs, ys = random_roll(xs, ys)
         
         return xs, ys
