@@ -58,7 +58,7 @@ def dump_preds_gif_and_metrics_plots(
     pred_y = pred_y_raw > 0.5
 
     print('-'*32)
-    print('saving training history and model...', end='')
+    print('saving training history and model...')
 
     id = int(time.time())
 

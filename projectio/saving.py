@@ -159,7 +159,7 @@ def save_history_dict_and_model(
     save_root_id_dir = f'{OUT_DIR}/{dataset}/{root_id}'
     if not os.path.isdir(save_root_id_dir): os.mkdir(save_root_id_dir)
 
-    save_parent_dir = f'{save_root_dir}/{model_name}'
+    save_parent_dir = f'{save_root_id_dir}/{model_name}'
     if not os.path.isdir(save_parent_dir): os.mkdir(save_parent_dir)
 
     save_dir = f'{save_parent_dir}/{train_idx}_{id}'
