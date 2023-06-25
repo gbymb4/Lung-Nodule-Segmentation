@@ -142,6 +142,7 @@ def save_instance(
 def save_history_dict_and_model(
     dataset: str,
     model: nn.Module,
+    root_id: int,
     id: int,
     config: dict,
     train_idx: int,
@@ -154,6 +155,9 @@ def save_history_dict_and_model(
 
     save_root_dir = f'{OUT_DIR}/{dataset}'
     if not os.path.isdir(save_root_dir): os.mkdir(save_root_dir)
+    
+    save_root_id_dir = f'{OUT_DIR}/{dataset}/{root_id}'
+    if not os.path.isdir(save_root_id_dir): os.mkdir(save_root_id_dir)
 
     save_parent_dir = f'{save_root_dir}/{model_name}'
     if not os.path.isdir(save_parent_dir): os.mkdir(save_parent_dir)

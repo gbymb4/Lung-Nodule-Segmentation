@@ -62,7 +62,15 @@ def dump_preds_gif_and_metrics_plots(
 
     id = int(time.time())
 
-    save_history_dict_and_model(dataset, model, id, config_dict, train_idx, history)
+    save_history_dict_and_model(
+        dataset,
+        model, 
+        root_id,
+        id, 
+        config_dict, 
+        train_idx, 
+        history
+    )
 
     gif_name = f'{OUT_DIR}/{dataset.lower()}/{type(model).__name__}/{root_id}/{train_idx}_{id}/example_preds.gif'
 
