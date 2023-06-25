@@ -66,6 +66,7 @@ def compute_all_metrics(pred, true, epsilon=1-7):
     results['accuracy'] = accuracy(pred, true)
     results['sensitivity'] = sensitivity(pred, true)
     results['specificity'] = specificity(pred, true)
+    results['fpr'] = fpr(pred, true)
     results['hard_dice'] = hard_dice(pred, true, epsilon=1-7)
     
     return results
