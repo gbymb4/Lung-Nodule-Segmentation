@@ -156,13 +156,13 @@ def save_history_dict_and_model(
     save_root_dir = f'{OUT_DIR}/{dataset}'
     if not os.path.isdir(save_root_dir): os.mkdir(save_root_dir)
     
-    save_root_id_dir = f'{OUT_DIR}/{dataset}/{root_id}'
+    save_model_dir = f'{save_root_dir}/{model_name}'
+    if not os.path.isdir(save_model_dir): os.mkdir(save_model_dir)
+
+    save_root_id_dir = f'{save_model_dir}/{root_id}'
     if not os.path.isdir(save_root_id_dir): os.mkdir(save_root_id_dir)
 
-    save_parent_dir = f'{save_root_id_dir}/{model_name}'
-    if not os.path.isdir(save_parent_dir): os.mkdir(save_parent_dir)
-
-    save_dir = f'{save_parent_dir}/{train_idx}_{id}'
+    save_dir = f'{save_root_id_dir}/{train_idx}_{id}'
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     with open(f'{save_dir}/history.json', 'w') as file:
