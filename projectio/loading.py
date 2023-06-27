@@ -402,7 +402,7 @@ class LNSegDataset(Dataset):
         x, y = data['x'], data['y']
 
         if len(x) != len(y):
-            y = y[len(y) - len(x) - 1:-1]
+            y = y[len(y) - len(x):]
 
         x = x.swapaxes(1, 3)
         x = x.swapaxes(0, 1)

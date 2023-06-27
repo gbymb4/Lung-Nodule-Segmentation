@@ -114,7 +114,7 @@ def dump_preds_gif_and_metrics_plots(
         for key, value in epoch_dict.items():
             history_transpose[key].append(value)
 
-    for train_metric, valid_metric in zip(metrics_keys[:num_keys // 2], metrics_keys[num_keys // 2:-1]):
+    for train_metric, valid_metric in zip(metrics_keys[:num_keys // 2], metrics_keys[num_keys // 2:]):
         train_vals = history_transpose[train_metric]
         valid_vals = history_transpose[valid_metric]
         

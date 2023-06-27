@@ -127,8 +127,8 @@ def main():
         imgs /= (CT_MAX + -CT_MIN)
         
         if len(imgs) != len(lung_segs):
-            imgs = imgs[len(imgs) - len(lung_segs) - 1:-1]
-            nodules_segs = nodules_segs[len(imgs) - len(lung_segs) - 1:-1]
+            imgs = imgs[len(imgs) - len(lung_segs):]
+            nodules_segs = nodules_segs[len(imgs) - len(lung_segs):]
         
         clahe_ct = apply_clahe(float64_to_cv8uc1(imgs))
         clahe_ct = cv8uc1_to_float64(clahe_ct)
