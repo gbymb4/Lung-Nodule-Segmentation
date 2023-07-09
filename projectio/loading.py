@@ -355,7 +355,8 @@ class LNSegDataset(Dataset):
         scan_fnames = [f'{data_dir}/{scan_fname}' for scan_fname in os.listdir(data_dir)]
      
         self.load_all(
-            scan_fnames, 
+            scan_fnames,
+            load_limit,
             load_ct_dims, 
             transforms, 
             transform_kwargs, 
@@ -430,10 +431,17 @@ class LNSegDataset(Dataset):
     
     
     
-    def load_all(self, scan_fnames: Iterable[str], *args) -> None:
+    def load_all(
+        self,
+        scan_fnames: Iterable[str], 
+        load_limit: Union[None, int],
+        *args
+    ) -> None:
         self.xs, self.ys = [], []
         
-        for scan_fname in scan_fnames:
+        for i, scan_fname in enumerate(scan_fnames):
+            if i == load_limit: break
+            
             x, y = self.load_instance(scan_fname, *args)
             
             self.xs.append(x)
@@ -502,10 +510,17 @@ class LNSegDatasetNodules(LNSegDataset):
 
         
 
-    def load_all(self, scan_fnames: Iterable[str], *args) -> None:
+    def load_all(
+        self, 
+        scan_fnames: Iterable[str], 
+        load_limit: Union[None, int],
+        *args
+    ) -> None:
         self.xs, self.ys = [], []
         
-        for scan_fname in scan_fnames:
+        for i, scan_fname in enumerate(scan_fnames):
+            if i == load_limit: break
+            
             x_splits, y_splits = self.load_instance(scan_fname, *args)
 
             for x_split, y_split in zip(x_splits, y_splits):

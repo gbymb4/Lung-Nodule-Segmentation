@@ -5,15 +5,13 @@ Created on Mon Jun 19 15:26:47 2023
 @author: Gavin
 """
 
-import torch
-
 from .loss import HardDiceLoss
 
 def accuracy(pred, true):
     pred = (pred > 0.5).reshape(-1)
     true = true.reshape(-1)
     
-    correct = torch.sum(pred == true).item()
+    correct = (pred == true).sum().item()
     total = len(pred)
     
     return correct / total
@@ -39,17 +37,28 @@ def specificity(pred, true):
     negatives = (~true).sum().item()
     
     return true_negatives / negatives if negatives > 0 else 0
-    
 
 
-def fpr(pred, true):
+
+def ppv(pred, true):
     pred = (pred > 0.5).reshape(-1)
     true = true.bool().reshape(-1)
     
-    false_positives = (pred & ~true).sum().item()
-    negatives = (~true).sum().item()
+    true_positives = (pred & true).sum().item()
+    model_positives = pred.sum().item()
+    
+    return true_positives / model_positives if model_positives > 0 else 0
+    
+    
 
-    return false_positives / negatives if negatives > 0 else 0
+def npv(pred, true):
+    pred = (pred > 0.5).reshape(-1)
+    true = true.bool().reshape(-1)
+    
+    true_negatives = (~pred & ~true).sum().item()
+    model_negatives = (~pred).sum().item()
+    
+    return true_negatives / model_negatives if model_negatives > 0 else 0
 
 
 
@@ -60,13 +69,29 @@ def hard_dice(pred, true, epsilon=1e-7):
 
 
 
+def iou(pred, true):
+    pred = (pred > 0.5).reshape(-1)
+    true = true.bool().reshape(-1)
+
+    intersection = (pred & true).sum().item()
+    union = (pred | true).sum().item()
+    
+    return intersection / union if union > 0 else 0
+
+
+
 def compute_all_metrics(pred, true, epsilon=1-7):
     results = {}
     
     results['accuracy'] = accuracy(pred, true)
     results['sensitivity'] = sensitivity(pred, true)
     results['specificity'] = specificity(pred, true)
-    results['fpr'] = fpr(pred, true)
+    results['fnr'] = 1 - results['sensitivity']
+    results['fpr'] = 1 - results['specificity']
+    results['ppv'] = ppv(pred, true)
+    results['npv'] = npv(pred, true)
+    results['f1'] = 2 * ((results['ppv'] * results['sensitivity']) / (results['ppv'] + results['sensitivity']))
     results['hard_dice'] = hard_dice(pred, true, epsilon=1-7)
+    results['iou'] = iou(pred, true)
     
     return results
