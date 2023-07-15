@@ -90,8 +90,12 @@ def compute_all_metrics(pred, true, epsilon=1-7):
     results['fpr'] = 1 - results['specificity']
     results['ppv'] = ppv(pred, true)
     results['npv'] = npv(pred, true)
-    results['f1'] = 2 * ((results['ppv'] * results['sensitivity']) / (results['ppv'] + results['sensitivity']))
     results['hard_dice'] = hard_dice(pred, true, epsilon=1-7)
     results['iou'] = iou(pred, true)
+    
+    f1_num = results['ppv'] * results['sensitivity']
+    f1_den = results['ppv'] + results['sensitivity']
+    
+    results['f1'] = 2 * (f1_num / f1_den) if f1_den > 0 else 0
     
     return results

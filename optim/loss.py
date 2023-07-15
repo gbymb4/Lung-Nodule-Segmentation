@@ -2,10 +2,16 @@ import torch
 
 class WeightedBCELoss:
 
-    def __init__(self, positive_weight, epsilon=1e-7):
+    def __init__(
+        self, 
+        positive_weight, 
+        positive_weight_frac=1,
+        epsilon=1e-7
+    ):
+        self.weight_frac = positive_weight_frac
         self.weight = positive_weight
         self.epsilon = epsilon
-
+        
 
 
     def __call__(self, pred, true):
@@ -15,7 +21,7 @@ class WeightedBCELoss:
 
         pred = torch.clip(pred, self.epsilon, 1 - self.epsilon)
 
-        positive = self.weight * true * torch.log(pred)
+        positive = (self.weight_frac * (self.weight - 1) + 1) * true * torch.log(pred)
         negative = (1 - true) * torch.log(1 - pred)
 
         total = positive + negative
@@ -75,6 +81,7 @@ class CompositeLoss:
     
     def __init__(self, 
         positive_weight, 
+        wbce_positive_frac=1,
         wbce_weight=1, 
         dice_weight=100, 
         epsilon=1e-7
@@ -82,7 +89,11 @@ class CompositeLoss:
         self.wbce_weight = wbce_weight
         self.dice_weight = dice_weight
         
-        self.wbce = WeightedBCELoss(positive_weight, epsilon=epsilon)
+        self.wbce = WeightedBCELoss(
+            positive_weight, 
+            positive_weight_frac=wbce_positive_frac,
+            epsilon=epsilon
+        )
         self.dice = SoftDiceLoss(epsilon=epsilon)
         
     

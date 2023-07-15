@@ -61,6 +61,7 @@ class SimpleBPOptimizer:
         lr=1e-5,
         cum_batch_size=32,
         valid_freq=10, 
+        wbce_positive_frac=1,
         wbce_weight=1,
         dice_weight=100,
         verbose=True
@@ -72,6 +73,7 @@ class SimpleBPOptimizer:
         optim = torch.optim.Adam(self.model.parameters(), lr=lr)
         criterion = CompositeLoss(
             self.positive_weight, 
+            wbce_positive_frac=wbce_positive_frac,
             wbce_weight=wbce_weight,
             dice_weight=dice_weight
         )

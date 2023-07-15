@@ -17,6 +17,7 @@ optimizer_arguments:
   valid_freq: 1
   wbce_weight: 1
   dice_weight: 1
+  wbce_positive_frac: 1
 loading_arguments:
   num_workers: 8
   mask_lungs: true
