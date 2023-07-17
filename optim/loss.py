@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from torch.nn import BCELoss
+from torch.nn import MSELoss
 from torchvision.models.resnet import resnet50, ResNet50_Weights
 
 class WeightedBCELoss:
@@ -96,17 +96,21 @@ class PerceptualR50Loss:
             param.requires_grad = False
 
         self.backbone = backbone
-        self.criterion = BCELoss()
+        self.criterion = MSELoss()
 
 
 
     def __call__(self, pred, true):
         if len(pred.shape) == 5:
-            pred = torch.swapaxes(pred.squeeze(dim=0), 0, 1)
-            pred = pred.repeat(1, 3, 1, 1)
+            pred = pred.squeeze(dim=0)
+            true = true.squeeze(dim=0)
+        
+        true = torch.swapaxes(true, 0, 1)
+        pred = torch.swapaxes(pred, 0, 1)
+        
+        pred = pred.repeat(1, 3, 1, 1)
+        true = true.repeat(1, 3, 1, 1)
             
-            true = torch.swapaxes(true.squeeze(dim=0), 0, 1)
-            true = true.repeat(1, 3, 1, 1)
             
         pred = torch.clip(pred, self.epsilon, 1 - self.epsilon)
             
