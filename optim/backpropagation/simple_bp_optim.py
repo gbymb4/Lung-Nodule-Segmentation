@@ -64,6 +64,7 @@ class SimpleBPOptimizer:
         wbce_positive_frac=1,
         wbce_weight=1,
         dice_weight=100,
+        perc_weight=1,
         verbose=True
     ) -> List[dict]:
         history = []
@@ -75,7 +76,9 @@ class SimpleBPOptimizer:
             self.positive_weight, 
             wbce_positive_frac=wbce_positive_frac,
             wbce_weight=wbce_weight,
-            dice_weight=dice_weight
+            dice_weight=dice_weight,
+            perc_weight=perc_weight,
+            device=self.device
         )
         
         print('#'*32)

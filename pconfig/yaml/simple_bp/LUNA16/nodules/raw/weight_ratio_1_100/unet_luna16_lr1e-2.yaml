@@ -11,12 +11,13 @@ model_arguments:
   channels: 16
   img_channels: 2
 optimizer_arguments:
-  epochs: 100
+  epochs: 500
   lr: 0.01
   cum_batch_size: 20
   valid_freq: 1
   wbce_weight: 1
   dice_weight: 100
+  perc_weight: 1
   wbce_positive_frac: 1
 loading_arguments:
   num_workers: 8

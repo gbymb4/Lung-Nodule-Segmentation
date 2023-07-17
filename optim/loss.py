@@ -1,5 +1,9 @@
 import torch
 
+from torch import nn
+from torch.nn import BCELoss
+from torchvision.models.resnet import resnet50, ResNet50_Weights
+
 class WeightedBCELoss:
 
     def __init__(
@@ -77,6 +81,42 @@ class HardDiceLoss:
     
     
     
+class PerceptualR50Loss:
+    
+    def __init__(self, device='cpu', epsilon=1e-7):
+        self.epsilon = 1e-7
+        
+        backbone = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+        backbone.eval()
+        backbone.to(device)
+        
+        backbone = nn.Sequential(*list(backbone._modules.values())[:-2])
+        
+        for param in backbone.parameters():
+            param.requires_grad = False
+
+        self.backbone = backbone
+        self.criterion = BCELoss()
+
+
+
+    def __call__(self, pred, true):
+        if len(pred.shape) == 5:
+            pred = torch.swapaxes(pred.squeeze(dim=0), 0, 1)
+            pred = pred.repeat(1, 3, 1, 1)
+            
+            true = torch.swapaxes(true.squeeze(dim=0), 0, 1)
+            true = true.repeat(1, 3, 1, 1)
+            
+        pred = torch.clip(pred, self.epsilon, 1 - self.epsilon)
+            
+        pred_fmap = self.backbone(pred)
+        true_fmap = self.backbone(true)
+        
+        return self.criterion(pred_fmap, true_fmap)
+    
+    
+    
 class CompositeLoss:
     
     def __init__(self, 
@@ -84,10 +124,13 @@ class CompositeLoss:
         wbce_positive_frac=1,
         wbce_weight=1, 
         dice_weight=100, 
-        epsilon=1e-7
+        perc_weight=1,
+        epsilon=1e-7,
+        device='cpu'
     ):
         self.wbce_weight = wbce_weight
         self.dice_weight = dice_weight
+        self.perc_weight = perc_weight
         
         self.wbce = WeightedBCELoss(
             positive_weight, 
@@ -95,12 +138,14 @@ class CompositeLoss:
             epsilon=epsilon
         )
         self.dice = SoftDiceLoss(epsilon=epsilon)
+        self.perceptual = PerceptualR50Loss(device=device, epsilon=epsilon)
         
     
     
     def __call__(self, pred, true):
         wbce = self.wbce_weight * self.wbce(pred, true)
         dice = self.dice_weight * self.dice(pred, true)
+        perceptual = self.perc_weight * self.perceptual(pred, true)
         
-        return wbce + dice
+        return perceptual + wbce + dice
         
