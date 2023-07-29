@@ -343,14 +343,16 @@ def main():
     config_dict = parse_config(config_fname)
     config = prepare_config(config_dict)
 
-    seed, dataset, dataset_type, model_type, device, transforms, *rest, = config
+    seed, dataset, dataset_type, model_type, device, transforms, root_id, *rest, = config
     train, test, cross_valid, *all_kwargs = rest
     
     model_kwargs, transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs = all_kwargs
 
     set_seed(seed)
 
-    root_id = int(time.time())
+    if root_id is None:
+        root_id = int(time.time())
+    
     out_root = f'{OUT_DIR}/{dataset.lower()}/{model_type.__name__}/{root_id}'
     
     if not os.path.isdir(out_root):

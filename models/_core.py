@@ -113,33 +113,35 @@ class RREL2D(nn.Module):
     def __init__(self, in_channels, out_channels, enc_ratio):
         super().__init__()
         
-        if enc_ratio > 2:
-            self.cn = nn.Conv3d(
-                in_channels,
-                out_channels, 
+        layers = []
+        if enc_ratio >= 2:
+            mp = nn.MaxPool3d(
                 kernel_size=(1, enc_ratio, enc_ratio), 
-                padding=(0, 1, 1),
                 stride=(1, enc_ratio, enc_ratio)
             )
-        else: 
-            k = max(enc_ratio, 3)
             
-            self.cn = nn.Conv3d(
-                in_channels,
-                out_channels, 
-                kernel_size=(1, k, k), 
-                padding=(0, 1, 1),
-                stride=(1, enc_ratio, enc_ratio)
-            )
+            layers.append(mp)
+        elif enc_ratio < 1:
+            raise ValueError('enc_ratio must be an integer and 1 or larger')
         
-        self.a = nn.ReLU()
-        self.bn = nn.BatchNorm3d(out_channels)
-        self.b = RR2DBlock(out_channels)
+        cn = nn.Conv3d(
+            in_channels, 
+            out_channels, 
+            kernel_size=(1, 3, 3),
+            padding=(0, 1, 1),
+            stride=(1, 1, 1)
+        )
+        bn = nn.BatchNorm3d(out_channels)
+        b = RR2DBlock(out_channels)
+        
+        layers.extend((cn, bn, b))
+        
+        self.features = nn.Sequential(*layers)
         
     
     
     def forward(self, x):
-        return self.b(self.bn(self.a(self.cn(x))))
+        return self.features(x)
     
 
 
@@ -192,22 +194,25 @@ class RRDL2D(nn.Module):
     def __init__(self, in_channels, out_channels, dec_ratio):
         super().__init__()
         
-        if dec_ratio == 5:
+        if dec_ratio == 3:
             self.dcn = nn.ConvTranspose3d(
-                in_channels,
-                out_channels, 
-                kernel_size=(1, 5, 5),
-                padding=(0, 0, 0),
-                stride=(1, 1, 1)
-            )    
-        else:
-            self.dcn = nn.ConvTranspose3d(
-                in_channels,
-                out_channels, 
-                kernel_size=(1, dec_ratio, dec_ratio),
-                padding=(0, 0, 0),
-                stride=(1, dec_ratio, dec_ratio)
+                in_channels, 
+                out_channels,
+                kernel_size=(1, 3, 3),
+                stride=(1, 3, 3),
+                padding=(0, 0, 0)
             )
+        elif dec_ratio == 2:
+            self.dcn = nn.ConvTranspose3d(
+                in_channels, 
+                out_channels,
+                kernel_size=(1, 3, 3),
+                stride=(1, 2, 2),
+                padding=(0, 1, 1),
+                output_padding=(0, 1, 1)
+            )
+        else:
+            raise ValueError('dec_ratio other than 2 or 3 is not supported')
         
         self.a_1 = nn.ReLU()
         self.bn_1 = nn.BatchNorm3d(out_channels)

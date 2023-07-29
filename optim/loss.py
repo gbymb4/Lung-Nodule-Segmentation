@@ -136,20 +136,34 @@ class CompositeLoss:
         self.dice_weight = dice_weight
         self.perc_weight = perc_weight
         
-        self.wbce = WeightedBCELoss(
-            positive_weight, 
-            positive_weight_frac=wbce_positive_frac,
-            epsilon=epsilon
-        )
-        self.dice = SoftDiceLoss(epsilon=epsilon)
-        self.perceptual = PerceptualR50Loss(device=device, epsilon=epsilon)
+        if self.wbce_weight > 0:
+            self.wbce = WeightedBCELoss(
+                positive_weight, 
+                positive_weight_frac=wbce_positive_frac,
+                epsilon=epsilon
+            )
+        if self.dice_weight > 0:
+            self.dice = SoftDiceLoss(epsilon=epsilon)
+        if self.perc_weight > 0:
+            self.perceptual = PerceptualR50Loss(device=device, epsilon=epsilon)
         
     
     
     def __call__(self, pred, true):
-        wbce = self.wbce_weight * self.wbce(pred, true)
-        dice = self.dice_weight * self.dice(pred, true)
-        perceptual = self.perc_weight * self.perceptual(pred, true)
+        if self.wbce_weight > 0:
+            wbce = self.wbce_weight * self.wbce(pred, true)
+        else:
+            wbce = 0
+            
+        if self.dice_weight > 0:
+            dice = self.dice_weight * self.dice(pred, true)
+        else:
+            dice = 0
+            
+        if self.perc_weight > 0:
+            perceptual = self.perc_weight * self.perceptual(pred, true)
+        else:
+            perceptual = 0
         
         return perceptual + wbce + dice
         

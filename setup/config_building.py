@@ -23,10 +23,12 @@ def prepare_config(
     dataset_type = deepcopy(config['dataset_type'])
     model_name = deepcopy(config['model'])
 
-    if model_name.lower() == 'r2unet':
-        model = R2UNet
     if model_name.lower() == 'unet':
         model = UNet
+    elif model_name.lower() == 'r2unet':
+        model = R2UNet
+    elif model_name.lower() == 'r2unet360':
+        model = R2UNet360
     elif model_name.lower() == 'r2wnet':
         model = R2WNet
     else:
@@ -41,6 +43,7 @@ def prepare_config(
     train = deepcopy(config['train'])
     test = deepcopy(config['test'])
     cross_valid = deepcopy(config['cross_valid'])
+    root_id = deepcopy(config['root_id'])
     
     model_kwargs = deepcopy(config['model_arguments'])
     optim_kwargs = deepcopy(config['optimizer_arguments'])
@@ -54,7 +57,7 @@ def prepare_config(
         transforms = None
         transform_kwargs = None
 
-    args = (seed, dataset, dataset_type, model, device, transforms, train, test, cross_valid)
+    args = (seed, dataset, dataset_type, model, device, transforms, train, test, cross_valid, root_id)
     kwargs = (model_kwargs, transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs)
 
     out = (*args, *kwargs)
