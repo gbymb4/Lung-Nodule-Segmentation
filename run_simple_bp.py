@@ -343,8 +343,8 @@ def main():
     config_dict = parse_config(config_fname)
     config = prepare_config(config_dict)
 
-    seed, dataset, dataset_type, model_type, device, transforms, root_id, *rest, = config
-    train, test, cross_valid, *all_kwargs = rest
+    seed, dataset, dataset_type, model_type, device, transforms, *rest, = config
+    train, test, cross_valid, root_id, *all_kwargs = rest
     
     model_kwargs, transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs = all_kwargs
 
