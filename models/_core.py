@@ -132,9 +132,10 @@ class RREL2D(nn.Module):
             stride=(1, 1, 1)
         )
         bn = nn.BatchNorm3d(out_channels)
+        a = nn.ReLU()
         b = RR2DBlock(out_channels)
         
-        layers.extend((cn, bn, b))
+        layers.extend((cn, bn, a, b))
         
         self.features = nn.Sequential(*layers)
         
@@ -150,42 +151,41 @@ class DRREL(nn.Module):
     def __init__(self, in_channels, out_channels, enc_ratio):
         super().__init__()
         
-        if enc_ratio > 2:
-            self.cn = nn.Conv3d(
-                in_channels,
-                out_channels, 
-                kernel_size=(3, enc_ratio, enc_ratio), 
-                padding=(1, 1, 1),
+        layers = []
+        if enc_ratio >= 2:
+            mp = nn.MaxPool3d(
+                kernel_size=(1, enc_ratio, enc_ratio), 
                 stride=(1, enc_ratio, enc_ratio)
             )
-        else: 
-            k = max(enc_ratio, 3)
             
-            self.cn = nn.Conv3d(
-                in_channels,
-                out_channels, 
-                kernel_size=(3, k, k), 
-                padding=(1, 1, 1),
-                stride=(1, enc_ratio, enc_ratio)
-            )
-          
-        self.a = nn.ReLU()
-        self.bn = nn.BatchNorm3d(out_channels)
+            layers.append(mp)
+        elif enc_ratio < 1:
+            raise ValueError('enc_ratio must be an integer and 1 or larger')
         
-        self.b_1 = RR2DBlock(out_channels)
-        self.b_2 = RR3DBlock(out_channels)
+        cn = nn.Conv3d(
+            in_channels, 
+            out_channels, 
+            kernel_size=(3, 3, 3),
+            padding=(1, 1, 1),
+            stride=(1, 1, 1)
+        )
+        bn = nn.BatchNorm3d(out_channels)
+        a = nn.ReLU()
+        
+        self.b2d = RR2DBlock(out_channels)
+        self.b3d = RR3DBlock(out_channels)
+        
+        layers.extend((cn, bn, a))
+        
+        self.backbone = nn.Sequential(*layers)
         
     
     
     def forward(self, x):
-        out1 = self.bn(self.a(self.cn(x))) 
+        out = self.backbone(x)
+        out = self.b2d(out) + self.b3d(out)
         
-        out2 = self.b_1(out1)
-        out3 = self.b_2(out1)
-
-        out4 = out2 + out3
-        
-        return out4
+        return out
     
     
 

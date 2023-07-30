@@ -29,6 +29,10 @@ def prepare_config(
         model = R2UNet
     elif model_name.lower() == 'r2unet360':
         model = R2UNet360
+    elif model_name.lower() == 'dualr2unet':
+        model = R2UNet
+    elif model_name.lower() == 'dualr2unet360':
+        model = R2UNet360
     elif model_name.lower() == 'r2wnet':
         model = R2WNet
     else:
