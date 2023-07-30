@@ -9,7 +9,7 @@ import torch
 
 from torch import nn
 from pconfig import OUT_DIR
-from .dualr2unet import DualR2UNet
+from .dualr2unet import DualR2UNetEnc
 
 class DualR2UNetFE(nn.Module):
     
@@ -39,7 +39,7 @@ class DualR2UNetFE(nn.Module):
             
             return fmaps[::-1]
         
-        backbone.forward = backbone_forward.__get__(backbone, DualR2UNet)
+        backbone.forward = backbone_forward.__get__(backbone, DualR2UNetEnc)
         
         self.backbone = backbone
         
@@ -58,7 +58,7 @@ class DualR2UNetFPN(nn.Module):
     ) -> None:
         super().__init__()
         
-        backbone = DualR2UNet(**backbone_kwargs)
+        backbone = DualR2UNetEnc(**backbone_kwargs)
         
         if pretrained_config is not None:
             pretrained_dataset = pretrained_config['dataset']

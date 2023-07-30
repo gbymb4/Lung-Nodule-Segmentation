@@ -20,22 +20,22 @@ class R2DBlock(nn.Module):
         self.cn1 = nn.Conv3d(
             channels, 
             channels, 
-            (1, 3, 3), 
-            (1, 1, 1), 
-            (0, 1, 1)
+            kernel_size=(1, 3, 3), 
+            stride=(1, 1, 1), 
+            padding=(0, 1, 1)
         )
         self.bn1 = nn.BatchNorm3d(channels)
-        self.a1 = nn.ReLU()
+        self.a1 = nn.ReLU(inplace=True)
         
         self.cn2 = nn.Conv3d(
             channels, 
             channels, 
-            (1, 3, 3), 
-            (1, 1, 1), 
-            (0, 1, 1)
+            kernel_size=(1, 3, 3), 
+            stride=(1, 1, 1), 
+            padding=(0, 1, 1)
         )
         self.bn2 = nn.BatchNorm3d(channels)
-        self.a2 = nn.ReLU()
+        self.a2 = nn.ReLU(inplace=True)
         
         
         
@@ -60,11 +60,11 @@ class RR2DBlock(nn.Module):
         
         self.rcl1 = RCL2D(channels)
         self.bn1 = nn.BatchNorm3d(channels)
-        self.a1 = nn.ReLU()
+        self.a1 = nn.ReLU(inplace=True)
         
         self.rcl2 = RCL2D(channels)
         self.bn2 = nn.BatchNorm3d(channels)
-        self.a2 = nn.ReLU()
+        self.a2 = nn.ReLU(inplace=True)
         
         
         
@@ -89,11 +89,11 @@ class RR3DBlock(nn.Module):
         
         self.rcl1 = RCL3D(channels)
         self.bn1 = nn.BatchNorm3d(channels)
-        self.a1 = nn.ReLU()
+        self.a1 = nn.ReLU(inplace=True)
         
         self.rcl2 = RCL3D(channels)
         self.bn2 = nn.BatchNorm3d(channels)
-        self.a2 = nn.ReLU()
+        self.a2 = nn.ReLU(inplace=True)
         
         
         
@@ -132,7 +132,7 @@ class RREL2D(nn.Module):
             stride=(1, 1, 1)
         )
         bn = nn.BatchNorm3d(out_channels)
-        a = nn.ReLU()
+        a = nn.ReLU(inplace=True)
         b = RR2DBlock(out_channels)
         
         layers.extend((cn, bn, a, b))
@@ -144,6 +144,45 @@ class RREL2D(nn.Module):
     def forward(self, x):
         return self.features(x)
     
+
+
+class RREL3D(nn.Module):
+    
+    def __init__(self, in_channels, out_channels, enc_ratio):
+        super().__init__()
+        
+        layers = []
+        if enc_ratio >= 2:
+            mp = nn.MaxPool3d(
+                kernel_size=(1, enc_ratio, enc_ratio), 
+                stride=(1, enc_ratio, enc_ratio)
+            )
+            
+            layers.append(mp)
+        elif enc_ratio < 1:
+            raise ValueError('enc_ratio must be an integer and 1 or larger')
+        
+        cn = nn.Conv3d(
+            in_channels, 
+            out_channels, 
+            kernel_size=(3, 3, 3),
+            padding=(1, 1, 1),
+            stride=(1, 1, 1)
+        )
+        bn = nn.BatchNorm3d(out_channels)
+        a = nn.ReLU(inplace=True)
+        b = RR3DBlock(out_channels)
+        
+        layers.extend((cn, bn, a, b))
+        
+        self.features = nn.Sequential(*layers)
+        
+    
+    
+    def forward(self, x):
+        return self.features(x)
+    
+
 
 
 class DRREL(nn.Module):
@@ -170,7 +209,7 @@ class DRREL(nn.Module):
             stride=(1, 1, 1)
         )
         bn = nn.BatchNorm3d(out_channels)
-        a = nn.ReLU()
+        a = nn.ReLU(inplace=True)
         
         self.b2d = RR2DBlock(out_channels)
         self.b3d = RR3DBlock(out_channels)
@@ -214,7 +253,7 @@ class RRDL2D(nn.Module):
         else:
             raise ValueError('dec_ratio other than 2 or 3 is not supported')
         
-        self.a_1 = nn.ReLU()
+        self.a_1 = nn.ReLU(inplace=True)
         self.bn_1 = nn.BatchNorm3d(out_channels)
         self.cn = nn.Conv3d(
             out_channels * 2,
@@ -223,9 +262,62 @@ class RRDL2D(nn.Module):
             padding=(0, 1, 1),
             stride=(1, 1, 1)
         )
-        self.a_2 = nn.ReLU()
+        self.a_2 = nn.ReLU(inplace=True)
         self.bn_2 = nn.BatchNorm3d(out_channels)
         self.b = RR2DBlock(out_channels)
+        
+        
+        
+    def forward(self, x, skip):
+        if len(x.shape) == 5:
+            dim = 1
+        elif len(x.shape) == 4:
+            dim = 0
+        
+        out = torch.cat((self.bn_1(self.a_1(self.dcn(x))), skip), dim=dim)
+        out = self.b(self.bn_2(self.a_2(self.cn(out))))
+
+        return out
+    
+    
+
+class RRDL3D(nn.Module):
+    
+    def __init__(self, in_channels, out_channels, dec_ratio):
+        super().__init__()
+        
+        if dec_ratio == 3:
+            self.dcn = nn.ConvTranspose3d(
+                in_channels, 
+                out_channels,
+                kernel_size=(1, 3, 3),
+                stride=(1, 3, 3),
+                padding=(0, 0, 0)
+            )
+        elif dec_ratio == 2:
+            self.dcn = nn.ConvTranspose3d(
+                in_channels, 
+                out_channels,
+                kernel_size=(1, 3, 3),
+                stride=(1, 2, 2),
+                padding=(0, 1, 1),
+                output_padding=(0, 1, 1)
+            )
+        else:
+            raise ValueError('dec_ratio other than 2 or 3 is not supported')
+        
+        self.a_1 = nn.ReLU(inplace=True)
+        self.bn_1 = nn.BatchNorm3d(out_channels)
+        self.cn = nn.Conv3d(
+            out_channels * 2,
+            out_channels, 
+            kernel_size=(3, 3, 3),
+            padding=(1, 1, 1),
+            stride=(1, 1, 1)
+        )
+        self.a_2 = nn.ReLU(inplace=True)
+        self.bn_2 = nn.BatchNorm3d(out_channels)
+        self.b = RR3DBlock(out_channels)
         
         
         
@@ -264,7 +356,7 @@ class DRRDL(nn.Module):
                 stride=(1, dec_ratio, dec_ratio)
             )
         
-        self.a_1 = nn.ReLU()
+        self.a_1 = nn.ReLU(inplace=True)
         self.bn_1 = nn.BatchNorm3d(out_channels)
         
         self.cn = nn.Conv3d(
@@ -275,7 +367,7 @@ class DRRDL(nn.Module):
             stride=(1, 1, 1)
         )
         
-        self.a_2 = nn.ReLU()
+        self.a_2 = nn.ReLU(inplace=True)
         self.bn_2 = nn.BatchNorm3d(out_channels)
         
         self.b_1 = RR2DBlock(out_channels)
@@ -380,6 +472,60 @@ class RCL3D(nn.Module):
         return x
 
 
+
+class AttentionBlock(nn.Module):
+    
+    def __init__(self, channels):
+        super().__init__()
+        
+        self.rb1 = self.__residual_block(channels)
+        self.rb2 = self.__residual_block(channels)
+        self.rb3 = self.__residual_block(channels, final=True)
+        
+        self.skip = nn.Sequential(
+            nn.Conv3d(channels, channels, kernel_size=(1, 1, 1)),
+            nn.BatchNorm3d(channels),
+            nn.ReLU(inplace=True),
+        )
+        
+        
+        
+    def forward(self, x):
+        out = self.rb1(x) + x
+        out += self.rb2(out)
+        out = self.rb3(out) + self.skip(out)
+        
+        return out
+        
+        
+        
+    def __residual_block(self, channels, final=False):
+        layers = [
+            nn.Conv3d(channels, channels, kernel_size=(1, 1, 1)),
+            nn.BatchNorm3d(channels),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(
+                channels, 
+                channels, 
+                kernel_size=(3, 3, 3),
+                stride=(1, 1, 1),
+                padding=(1, 1, 1)
+            ),
+            nn.BatchNorm3d(channels),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(channels, channels, kernel_size=(1, 1, 1)),
+            nn.BatchNorm3d(channels)    
+        ]
+        
+        if not final:
+            layers.append(nn.ReLU(inplace=True))
+        elif final:
+            layers.append(nn.Sigmoid())
+            
+        return nn.Sequential(*layers)
+    
+
+
 class BiFPNBlock(nn.Module):
 
     def __init__(self, channels, size=360):
@@ -390,7 +536,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(1, 1, 1)
         )
-        self.cn1_a = nn.ReLU()
+        self.cn1_a = nn.ReLU(inplace=True)
         self.cn1_bn = nn.BatchNorm3d(channels)
         self.l1_cn = nn.Sequential(self.cn1, self.cn1_bn, self.cn1_a)
 
@@ -401,7 +547,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 2, 2),
             padding=(1, 1, 1)
         )
-        self.ds1_a = nn.ReLU()
+        self.ds1_a = nn.ReLU(inplace=True)
         self.ds1_bn = nn.BatchNorm3d(channels * 2)
         self.l1_ds = nn.Sequential(self.ds1, self.ds1_bn, self.ds1_a)
         self.us1 = nn.ConvTranspose3d(
@@ -411,7 +557,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 2, 2),
             padding=(0, 0, 0)
         )
-        self.us1_a = nn.ReLU()
+        self.us1_a = nn.ReLU(inplace=True)
         self.us1_bn = nn.BatchNorm3d(channels)
         self.l1_us = nn.Sequential(self.us1, self.us1_bn, self.us1_a)
 
@@ -422,7 +568,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(1, 1, 1)
         )
-        self.cn2_1_a = nn.ReLU()
+        self.cn2_1_a = nn.ReLU(inplace=True)
         self.cn2_1_bn = nn.BatchNorm3d(channels * 2)
         self.l2_1_cn = nn.Sequential(self.cn2_1, self.cn2_1_bn, self.cn2_1_a)
         self.cn2_2 = nn.Conv3d(
@@ -432,7 +578,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(1, 1, 1)
         )
-        self.cn2_2_a = nn.ReLU()
+        self.cn2_2_a = nn.ReLU(inplace=True)
         self.cn2_2_bn = nn.BatchNorm3d(channels * 2)
         self.l2_2_cn = nn.Sequential(self.cn2_2, self.cn2_2_bn, self.cn2_2_a)
 
@@ -443,7 +589,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 2, 2),
             padding=(1, 1, 1)
         )
-        self.ds2_a = nn.ReLU()
+        self.ds2_a = nn.ReLU(inplace=True)
         self.ds2_bn = nn.BatchNorm3d(channels * 4)
         self.l2_ds = nn.Sequential(self.ds2, self.ds2_bn, self.ds2_a)
         self.us2 = nn.ConvTranspose3d(
@@ -453,7 +599,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 2, 2),
             padding=(0, 0, 0)
         )
-        self.us2_a = nn.ReLU()
+        self.us2_a = nn.ReLU(inplace=True)
         self.us2_bn = nn.BatchNorm3d(channels * 2)
         self.l2_us = nn.Sequential(self.us2, self.us2_bn, self.us2_a)
 
@@ -464,7 +610,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(1, 1, 1)
         )
-        self.cn3_1_a = nn.ReLU()
+        self.cn3_1_a = nn.ReLU(inplace=True)
         self.cn3_1_bn = nn.BatchNorm3d(channels * 4)
         self.l3_1_cn = nn.Sequential(self.cn3_1, self.cn3_1_bn, self.cn3_1_a)
         self.cn3_2 = nn.Conv3d(
@@ -474,7 +620,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(1, 1, 1)
         )
-        self.cn3_2_a = nn.ReLU()
+        self.cn3_2_a = nn.ReLU(inplace=True)
         self.cn3_2_bn = nn.BatchNorm3d(channels * 4)
         self.l3_2_cn = nn.Sequential(self.cn3_2, self.cn3_2_bn, self.cn3_2_a)
 
@@ -485,7 +631,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 2, 2),
             padding=(1, 1, 1)
         )
-        self.ds3_a = nn.ReLU()
+        self.ds3_a = nn.ReLU(inplace=True)
         self.ds3_bn = nn.BatchNorm3d(channels * 8)
         self.l3_ds = nn.Sequential(self.ds3, self.ds3_bn, self.ds3_a)
         self.us3 = nn.ConvTranspose3d(
@@ -495,7 +641,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 2, 2),
             padding=(0, 0, 0)
         )
-        self.us3_a = nn.ReLU()
+        self.us3_a = nn.ReLU(inplace=True)
         self.us3_bn = nn.BatchNorm3d(channels * 4)
         self.l3_us = nn.Sequential(self.us3, self.us3_us, self.us3_a)
 
@@ -506,7 +652,7 @@ class BiFPNBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(1, 1, 1)
         )
-        self.cn4_a = nn.ReLU()
+        self.cn4_a = nn.ReLU(inplace=True)
         self.cn4_bn = nn.BatchNorm3d(channels * 8)
         self.l4_cn = nn.Sequential(self.cn4, self.cn4_bn, self.cn4_a)
 

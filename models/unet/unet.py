@@ -126,7 +126,7 @@ class UNetBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(0, 1, 1)
         )
-        self.a1 = nn.ReLU()
+        self.a1 = nn.ReLU(inplace=True)
 
         self.cn2 = nn.Conv3d(
             out_channels,
@@ -135,7 +135,7 @@ class UNetBlock(nn.Module):
             stride=(1, 1, 1),
             padding=(0, 1, 1)
         )
-        self.a2 = nn.ReLU()
+        self.a2 = nn.ReLU(inplace=True)
 
 
 
