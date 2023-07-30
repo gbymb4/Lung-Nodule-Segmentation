@@ -56,6 +56,7 @@ def prepare_config(
     test = deepcopy(config['test'])
     cross_valid = deepcopy(config['cross_valid'])
     root_id = deepcopy(config['root_id'])
+    checkpoint_freq = deepcopy(config['checkpoint_freq'])
     
     model_kwargs = deepcopy(config['model_arguments'])
     optim_kwargs = deepcopy(config['optimizer_arguments'])
@@ -69,8 +70,16 @@ def prepare_config(
         transforms = None
         transform_kwargs = None
 
-    args = (seed, dataset, dataset_type, model, device, transforms, train, test, cross_valid, root_id)
-    kwargs = (model_kwargs, transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs)
+    args = (
+        seed, dataset, dataset_type,
+        model, device, transforms, 
+        train, test, cross_valid, 
+        root_id, checkpoint_freq
+    )
+    kwargs = (
+        model_kwargs, transform_kwargs, optim_kwargs,
+        loading_kwargs, dataloader_kwargs
+    )
 
     out = (*args, *kwargs)
 

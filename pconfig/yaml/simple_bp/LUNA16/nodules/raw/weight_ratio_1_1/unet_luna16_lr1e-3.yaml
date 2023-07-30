@@ -8,6 +8,7 @@ train: true
 test: false
 cross_valid: true
 root_id: ~
+checkpoint_freq: 50
 model_arguments:
   channels: 16
   img_channels: 2

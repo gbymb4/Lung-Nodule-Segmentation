@@ -42,6 +42,7 @@ def dump_preds_gif_and_metrics_plots(
     valid_loader, 
     device, 
     train_idx, 
+    id,
     root_id,
     config_dict
 ):
@@ -59,8 +60,6 @@ def dump_preds_gif_and_metrics_plots(
 
     print('-'*32)
     print('saving training history and model...')
-
-    id = int(time.time())
 
     save_history_dict_and_model(
         dataset,
@@ -131,6 +130,7 @@ def dump_preds_gif_and_metrics_plots(
 
 
 def run_train(
+    seed,
     dataset, 
     model_type, 
     device, 
@@ -139,7 +139,8 @@ def run_train(
     datasets,
     dataloader_kwargs,
     config_dict,
-    root_id
+    root_id,
+    checkpoint_freq
 ):  
     model = model_type(**model_kwargs).to(device)
     
@@ -148,22 +149,27 @@ def run_train(
 
     train_loader, valid_loader = prepare_dataloaders(datasets, **dataloader_kwargs)
 
-    optim = SimpleBPOptimizer(model, train_loader, valid_loader, device=device)
-    history = optim.execute(**optim_kwargs)
-
+    id = int(time.time())
     train_idx = dataloader_kwargs['train_idx']
 
-    dump_preds_gif_and_metrics_plots(
-        dataset, 
-        model, 
-        history, 
-        valid_loader, 
-        device, 
-        train_idx, 
-        root_id,
-        config_dict
-    )
-    
+    def checkpoint(hist, epoch):
+        if epoch % checkpoint_freq == 0:
+            dump_preds_gif_and_metrics_plots(
+                dataset, 
+                model, 
+                hist, 
+                valid_loader, 
+                device, 
+                train_idx, 
+                id,
+                root_id,
+                config_dict
+            )
+        
+
+    optim = SimpleBPOptimizer(seed, model, train_loader, valid_loader, device=device)
+    history = optim.execute(**optim_kwargs, checkpoint_callback=checkpoint)
+
     return history
 
 
@@ -344,7 +350,7 @@ def main():
     config = prepare_config(config_dict)
 
     seed, dataset, dataset_type, model_type, device, transforms, *rest, = config
-    train, test, cross_valid, root_id, *all_kwargs = rest
+    train, test, cross_valid, root_id, checkpoint_freq, *all_kwargs = rest
     
     model_kwargs, transform_kwargs, optim_kwargs, loading_kwargs, dataloader_kwargs = all_kwargs
 
@@ -381,7 +387,8 @@ def main():
                 datasets,
                 dataloader_kwargs,
                 config_dict,
-                root_id
+                root_id,
+                checkpoint_freq
             )
             
             histories.append(history)
@@ -406,7 +413,8 @@ def main():
                     datasets,
                     dataloader_kwargs,
                     config_dict,
-                    root_id
+                    root_id,
+                    checkpoint_freq
                 )
                 
                 histories.append(histories)

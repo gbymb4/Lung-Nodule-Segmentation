@@ -5,7 +5,7 @@ Created on Tue Apr 25 21:11:17 2023
 @author: Gavin
 """
 
-import torch, math, time
+import torch, math, time, random
 
 import numpy as np
 
@@ -16,7 +16,9 @@ from optim import CompositeLoss, compute_all_metrics
 
 class SimpleBPOptimizer:
     
-    def __init__(self,
+    def __init__(
+        self,
+        seed: int,
         model: nn.Module, 
         train: DataLoader, 
         valid: DataLoader,
@@ -24,6 +26,7 @@ class SimpleBPOptimizer:
     ) -> None:
         super().__init__()
         
+        self.seed = seed
         self.model = model
         self.train_loader = train
         self.valid_loader = valid
@@ -56,7 +59,8 @@ class SimpleBPOptimizer:
 
 
         
-    def execute(self,
+    def execute(
+        self,
         epochs=100,
         lr=1e-5,
         cum_batch_size=32,
@@ -65,7 +69,8 @@ class SimpleBPOptimizer:
         wbce_weight=1,
         dice_weight=100,
         perc_weight=1,
-        verbose=True
+        verbose=True,
+        checkpoint_callback=None
     ) -> List[dict]:
         history = []
 
@@ -87,6 +92,8 @@ class SimpleBPOptimizer:
         
         for i in range(epochs):
             epoch = i + 1
+            
+            self.__reset_seed(self.seed + i)
             
             if verbose and i % 10 == 0:
                 print(f'executing epoch {epoch}...', end='')
@@ -215,6 +222,8 @@ class SimpleBPOptimizer:
                 history_record.update(wavg_metrics)
 
             history.append(history_record)
+            
+            checkpoint_callback(history, epoch)
 
             if verbose and i % 10 == 0 and epoch != epochs:
                 print('done')
@@ -233,4 +242,10 @@ class SimpleBPOptimizer:
         print(f'total elapsed time: {end-start}s')
 
         return history
-            
+    
+    
+    
+    def __reset_seed(seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)

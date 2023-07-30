@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 from torch import nn
 from typing import List
+from copy import deepcopy
 from pconfig import NSCLC_PREPROCESSED_DATA_DIR, LUNA16_PREPROCESSED_DATA_DIR, OUT_DIR
 
 def plot_and_save_gif(
@@ -164,6 +165,9 @@ def save_history_dict_and_model(
 
     save_dir = f'{save_root_id_dir}/{train_idx}_{id}'
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    
+    checkpoint_dir = f'{save_dir}/model_checkpoints'
+    if not os.path.isdir(checkpoint_dir): os.mkdir(checkpoint_dir)
 
     with open(f'{save_dir}/history.json', 'w') as file:
         json.dump(history, file)
@@ -171,7 +175,9 @@ def save_history_dict_and_model(
     with open(f'{save_dir}/config.yaml', 'w') as file:
         yaml.safe_dump(config, file)
         
-    for param in model.parameters():
+    for param in deepcopy(model).parameters():
         param.requires_grad = True
 
-    torch.save(model.state_dict(), f'{save_dir}/model')
+    epoch = len(history)
+
+    torch.save(model.state_dict(), f'{checkpoint_dir}/model_{epoch}.pt')
