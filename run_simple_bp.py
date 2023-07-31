@@ -379,6 +379,7 @@ def main():
         
         if not cross_valid:
             history = run_train(
+                seed,
                 dataset, 
                 model_type, 
                 device, 
@@ -405,6 +406,7 @@ def main():
                 dataloader_kwargs['train_idx'] = train_idx
                 
                 history = run_train(
+                    seed,
                     dataset, 
                     model_type, 
                     device, 
