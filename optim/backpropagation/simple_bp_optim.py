@@ -245,7 +245,7 @@ class SimpleBPOptimizer:
     
     
     
-    def __reset_seed(seed):
+    def __reset_seed(self, seed):
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
