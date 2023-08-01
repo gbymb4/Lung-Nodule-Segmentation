@@ -177,7 +177,6 @@ def run_train(
                 config_dict
             )
         
-
     optim = SimpleBPOptimizer(seed, model, train_loader, valid_loader, device=device)
     history = optim.execute(
         **optim_kwargs, 

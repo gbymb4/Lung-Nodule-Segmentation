@@ -75,7 +75,7 @@ class SimpleBPOptimizer:
         init_history = None
     ) -> List[dict]:
         
-        if init_history is not None:
+        if init_history is None:
             history = []
         else:
             history = init_history
