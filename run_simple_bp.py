@@ -153,12 +153,15 @@ def run_train(
     id = int(time.time())
     train_idx = dataloader_kwargs['train_idx']
     
-    last_epoch, last_history = last_checkpoint(
+    last_epoch, last_id, last_history = last_checkpoint(
         dataset, 
         model, 
         root_id, 
         train_idx
     )
+    
+    if last_id is not None:
+        id = last_id
 
     def checkpoint(hist, epoch):
         if epoch % checkpoint_freq == 0:
