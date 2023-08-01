@@ -16,7 +16,8 @@ from projectio import (
     save_history_dict_and_model, 
     plot_and_save_gif, 
     plot_and_save_metric,
-    plot_and_save_slide
+    plot_and_save_slide,
+    last_checkpoint
 )
 
 from optim import compute_all_metrics
@@ -151,6 +152,8 @@ def run_train(
 
     id = int(time.time())
     train_idx = dataloader_kwargs['train_idx']
+    
+    last_epoch = last_checkpoint(dataset, model, root_id, train_idx)
 
     def checkpoint(hist, epoch):
         if epoch % checkpoint_freq == 0:
@@ -168,7 +171,7 @@ def run_train(
         
 
     optim = SimpleBPOptimizer(seed, model, train_loader, valid_loader, device=device)
-    history = optim.execute(**optim_kwargs, checkpoint_callback=checkpoint)
+    history = optim.execute(**optim_kwargs, checkpoint_callback=checkpoint, start_epoch=last_epoch)
 
     return history
 

@@ -62,6 +62,7 @@ class SimpleBPOptimizer:
     def execute(
         self,
         epochs=100,
+        start_epoch=0,
         lr=1e-5,
         cum_batch_size=32,
         valid_freq=10, 
@@ -90,7 +91,7 @@ class SimpleBPOptimizer:
         print('beginning BP training loop...')
         print('#'*32)
         
-        for i in range(epochs):
+        for i in range(start_epoch, epochs):
             epoch = i + 1
             
             self.__reset_seed(self.seed + i)
