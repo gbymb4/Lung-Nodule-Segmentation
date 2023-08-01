@@ -71,9 +71,14 @@ class SimpleBPOptimizer:
         dice_weight=100,
         perc_weight=1,
         verbose=True,
-        checkpoint_callback=None
+        checkpoint_callback=None,
+        init_history = None
     ) -> List[dict]:
-        history = []
+        
+        if init_history is not None:
+            history = []
+        else:
+            history = init_history
 
         start = time.time()
 

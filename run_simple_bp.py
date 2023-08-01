@@ -153,7 +153,12 @@ def run_train(
     id = int(time.time())
     train_idx = dataloader_kwargs['train_idx']
     
-    last_epoch = last_checkpoint(dataset, model, root_id, train_idx)
+    last_epoch, last_history = last_checkpoint(
+        dataset, 
+        model, 
+        root_id, 
+        train_idx
+    )
 
     def checkpoint(hist, epoch):
         if epoch % checkpoint_freq == 0:
@@ -171,7 +176,12 @@ def run_train(
         
 
     optim = SimpleBPOptimizer(seed, model, train_loader, valid_loader, device=device)
-    history = optim.execute(**optim_kwargs, checkpoint_callback=checkpoint, start_epoch=last_epoch)
+    history = optim.execute(
+        **optim_kwargs, 
+        checkpoint_callback=checkpoint, 
+        start_epoch=last_epoch,
+        init_history=last_history
+    )
 
     return history
 
