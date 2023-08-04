@@ -485,17 +485,18 @@ class AttentionBlock(nn.Module):
         self.skip = nn.Sequential(
             nn.Conv3d(channels, channels, kernel_size=(1, 1, 1)),
             nn.BatchNorm3d(channels),
-            nn.ReLU(inplace=True),
         )
+        
+        self.aout = nn.Sigmoid()
         
         
         
     def forward(self, x):
-        out = self.rb1(x) + x
-        out += self.rb2(out)
-        out = self.rb3(out) + self.skip(out)
+        out1 = self.rb1(x) + x
+        out2 = self.rb2(out1) + out1
+        out3 = self.aout(self.rb3(out2) + self.skip(out2))
         
-        return out
+        return out3
         
         
         
@@ -519,8 +520,6 @@ class AttentionBlock(nn.Module):
         
         if not final:
             layers.append(nn.ReLU(inplace=True))
-        elif final:
-            layers.append(nn.Sigmoid())
             
         return nn.Sequential(*layers)
     

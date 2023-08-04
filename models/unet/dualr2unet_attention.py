@@ -23,21 +23,29 @@ class SADualR2UNet(DualR2UNetEnc):
     def forward(self, x):
         out1 = self.drrel1(x)
         
-        out2 = self.drrel2(out1)
-        out2 += self.att2(out2) * out2
+        out2_1 = self.drrel2(out1)
+        out2_2 = self.att2(out2_1)
+        out2_3 = out2_2 * out2_1
+        out2_4 = out2_3 + out2_1
         
-        out3 = self.drrel3(out2)
-        out3 += self.att3(out3) * out3
+        out3_1 = self.drrel3(out2_4)
+        out3_2 = self.att3(out3_1)
+        out3_3 = out3_2 * out3_1
+        out3_4 = out3_3 + out3_1
         
-        out4 = self.drrel4(out3)
-        out4 += self.att4(out4) * out4
+        out4_1 = self.drrel4(out3_4)
+        out4_2 = self.att4(out4_1)
+        out4_3 = out4_2 * out4_1
+        out4_4 = out4_3 + out4_1
         
-        out5 = self.drrel5(out4)
-        out5 += self.att5(out5) * out5
+        out5_1 = self.drrel5(out4_4)
+        out5_2 = self.att5(out5_1)
+        out5_3 = out5_2 * out5_1
+        out5_4 = out5_3 + out5_1
         
-        out6 = self.rrdl6(out5, out4)
-        out7 = self.rrdl7(out6, out3)
-        out8 = self.rrdl8(out7, out2)
+        out6 = self.rrdl6(out5_4, out4_4)
+        out7 = self.rrdl7(out6, out3_4)
+        out8 = self.rrdl8(out7, out2_4)
         out9 = self.rrdl9(out8, out1)
         
         out10 = self.a10(self.cn10(out9))
@@ -61,21 +69,29 @@ class SADualR2UNet360(DualR2UNet360Enc):
     def forward(self, x):
         out1 = self.drrel1(x)
         
-        out2 = self.drrel2(out1)
-        out2 += self.att2(out2) * out2
+        out2_1 = self.drrel2(out1)
+        out2_2 = self.att2(out2_1)
+        out2_3 = out2_2 * out2_1
+        out2_4 = out2_3 + out2_1
         
-        out3 = self.drrel3(out2)
-        out3 += self.att3(out3) * out3
+        out3_1 = self.drrel3(out2_4)
+        out3_2 = self.att3(out3_1)
+        out3_3 = out3_2 * out3_1
+        out3_4 = out3_3 + out3_1
         
-        out4 = self.drrel4(out3)
-        out4 += self.att4(out4) * out4
+        out4_1 = self.drrel4(out3_4)
+        out4_2 = self.att4(out4_1)
+        out4_3 = out4_2 * out4_1
+        out4_4 = out4_3 + out4_1
         
-        out5 = self.drrel5(out4)
-        out5 += self.att5(out5) * out5
+        out5_1 = self.drrel5(out4_4)
+        out5_2 = self.att5(out5_1)
+        out5_3 = out5_2 * out5_1
+        out5_4 = out5_3 + out5_1
         
-        out6 = self.rrdl6(out5, out4)
-        out7 = self.rrdl7(out6, out3)
-        out8 = self.rrdl8(out7, out2)
+        out6 = self.rrdl6(out5_4, out4_4)
+        out7 = self.rrdl7(out6, out3_4)
+        out8 = self.rrdl8(out7, out2_4)
         out9 = self.rrdl9(out8, out1)
         
         out10 = self.a10(self.cn10(out9))
