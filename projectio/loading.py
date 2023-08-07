@@ -5,7 +5,7 @@ Created on Mon Apr  3 16:51:42 2023
 @author: Gavin
 """
 
-import os, torch
+import os, torch, json
 
 import numpy as np
 import skimage.io as io
@@ -299,13 +299,33 @@ def load_model(
     train_idx,
     id
 ):
-    model_dir = f'{OUT_DIR}/{model_type.__name__}/{root_id}/{train_idx}_{id}'
-    model_weights_fname = f'{model_dir}/model'
+    models_dir = f'{OUT_DIR}/{model_type.__name__}/{root_id}/{train_idx}_{id}/model_checkpoints'
+    model_weights_fnames = sorted(os.listdir(models_dir), key=lambda x: int(x[6:-3]))
+    model_weights_fname = f'{models_dir}/{model_weights_fnames[-1]}'
     
     model = model_type(**model_kwargs)
     model.load_state_dict(torch.load(model_weights_fname))
     
     return model.eval()
+    
+
+
+def rank_histories(
+    model_type,
+    root_id,
+    metric='valid_ppv'
+):
+    runs_dir = f'{OUT_DIR}/{model_type.__name__}/{root_id}'
+    all_history_fnames = [f'{runs_dir}/{run}/history.json' for run in os.listdir(runs_dir)]
+    
+    histories_last_epochs = [json.load(open(fname))[-1] for fname in all_history_fnames]
+    last_epochs_metric = [epoch[metric] for epoch in histories_last_epochs]
+    
+    best_idx = np.argmax(np.array(last_epochs_metric))
+    
+    train_idx, id = [int(elem) for elem in os.listdir(runs_dir)[best_idx].split('_')]
+    
+    return train_idx, id
     
 
 
@@ -402,6 +422,9 @@ class LNSegDataset(Dataset):
         
         x, y = data['x'], data['y']
 
+        if len(x) ==  0 or len(y) == 0:
+            return [], []
+
         if len(x) != len(y):
             y = y[len(y) - len(x):]
 
@@ -464,6 +487,9 @@ class LNSegDatasetNodules(LNSegDataset):
         data = np.load(scan_fname)
         
         x, y = data['x'], data['y']
+        
+        if len(x) ==  0 or len(y) == 0:
+            return [], []
         
         if len(x) != len(y):
             y = y[len(y) - len(x) - 1:-1]
@@ -597,15 +623,15 @@ def prepare_dataloaders(datasets, train_idx, **kwargs):
     valid_idxs = all_idxs[all_idxs != train_idx]
     valid_datasets = [datasets[idx] for idx in valid_idxs]
     
-    train = DataLoader(datasets[train_idx], collate_fn=__collate_fn, **kwargs)
-    valid = DataLoader(ConcatDataset(valid_datasets), collate_fn=__collate_fn, **kwargs)
+    train = DataLoader(datasets[train_idx], collate_fn=__collate_fn, **kwargs, shuffle=True)
+    valid = DataLoader(ConcatDataset(valid_datasets), collate_fn=__collate_fn, **kwargs, shuffle=False)
     
     return train, valid
 
 
 
 def prepare_testloader(testset, **kwargs):
-    return DataLoader(testset, collate_fn=__collate_fn, **kwargs)
+    return DataLoader(testset, collate_fn=__collate_fn, **kwargs, shuffle=False)
 
 
 
